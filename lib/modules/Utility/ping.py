@@ -1,32 +1,29 @@
 import hikari, tanjun
+from lib.core.bot import Bot
 from lib.core.client import Client
 import datetime as dt
 from tanjun.abc import Context as Context
 
-ping_create_component = tanjun.Component()
 
 
-@ping_create_component.with_command
-@tanjun.as_slash_command("ping","Gets the current ping of the bot")
-async def ping_command(ctx: Context):
-    ping = ctx.shards.heartbeat_latency * 1000
-    colour = (list(await ctx.member.fetch_roles())[-1].color) # Surely there's a better way to do this
-    embed = (
-        hikari.Embed(
+class Ping(tanjun.Component):
+    def __init__(self):
+        super().__init__()
+
+    @tanjun.as_slash_command("ping","Gets the current ping of the bot")
+    async def ping_command(self, ctx: Context):
+        ping = ctx.shards.heartbeat_latency * 1000
+        embed = Bot.auto_embed(
+            type="info",
+            author="Utility",
             title="Carlos Estabot Ping",
-            description=f"Ping: `{ping:,.0f}` ms",
-            colour=colour,
-            # Doing it like this is important.
-            timestamp=dt.datetime.now(tz=dt.timezone.utc),
+            description=f"> Ping: `{ping:,.0f}` ms",
+            ctx=ctx
         )
-        .set_author(name="Information")
-        .set_footer(
-            text=f"Requested by {ctx.member.display_name}",
-            icon=ctx.member.avatar_url,
-        )
-        .set_thumbnail(ctx.author.avatar_url)
-    )
-    await ctx.respond(embed)
+        await ctx.respond(embed)
+
+
+ping_create_component = Ping()
 
 @tanjun.as_loader
 def load_components(client: Client):
