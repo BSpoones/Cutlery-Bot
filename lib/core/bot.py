@@ -1,5 +1,6 @@
 from os import stat
 import hikari, tanjun, datetime as dt
+from lib.core.event_handler import EventHandler
 from .client import Client
 from hikari import Embed
 
@@ -18,6 +19,8 @@ class Bot(hikari.GatewayBot):
             token=self.token, 
             intents=hikari.Intents.ALL
             )
+        
+        
     
     def create_client(self) -> None:
         """Function that creates the tanjun client"""
@@ -40,19 +43,7 @@ class Bot(hikari.GatewayBot):
     @classmethod
     def auto_embed(self,**kwargs):
         """
-        Embed creator for all types of embed:
-
-        type = lesson | lesson-command (covers all lesson commands) | emoji | reminder | reminder-user | info
-        title
-        description
-        fields
-        colour
-        userID (created into an object)
-        thumbnail
-        schoolname
-        iconurl
-
-        ctx
+        Embed creator for commands
         """
         if "type" not in kwargs:
             embed_type = "default"
