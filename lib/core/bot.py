@@ -29,7 +29,13 @@ class Bot(hikari.GatewayBot):
         self.client.load_modules()
     def run(self):
         self.create_client()
+        event_handler = EventHandler(self)
+        event_handler.subscribe_to_events()
         super().run()
+        self.update_presence(status="Test")
+    
+    # async def update(self, status) -> None:
+        # return await super().update_presence(status=status)
     
     @classmethod
     def auto_embed(self,**kwargs):
