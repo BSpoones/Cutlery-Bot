@@ -89,7 +89,7 @@ class Bot(hikari.GatewayBot):
             case "lesson":
                 embed.set_author(name=kwargs["schoolname"],icon=kwargs["iconurl"])
             case "reminder-user":
-                embed.set_author(name=kwargs["member"],icon=get_colour_from_member(kwargs["member"]))
+                embed.set_author(name=kwargs["member"],icon=(kwargs["member"].avatar_url))
         if embed_type == "emoji":
             embed.set_image(url=kwargs["emoji_url"])
         if "ctx" in kwargs:
