@@ -7,7 +7,7 @@ from hikari import Embed
 # My own personal functions to aid development
 def get_colour_from_ctx(ctx: tanjun.abc.Context):
     return (ctx.member.get_top_role().color)
-def get_colour_from_member(self,member: hikari.Member):
+def get_colour_from_member(member: hikari.Member):
     return (member.get_top_role().color)
 
 
