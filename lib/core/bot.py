@@ -1,9 +1,11 @@
 from os import stat
-import hikari, tanjun, datetime as dt
+import hikari, tanjun, datetime as dt, logging, json
+from data.bot.data import VERSION
 from lib.core.event_handler import EventHandler
 from .client import Client
 from hikari import Embed
 
+    
 # My own personal functions to aid development
 def get_colour_from_ctx(ctx: tanjun.abc.Context):
     return (ctx.member.get_top_role().color)
@@ -19,8 +21,6 @@ class Bot(hikari.GatewayBot):
             token=self.token, 
             intents=hikari.Intents.ALL
             )
-        
-        
     
     def create_client(self) -> None:
         """Function that creates the tanjun client"""
@@ -34,12 +34,18 @@ class Bot(hikari.GatewayBot):
         self.create_client()
         event_handler = EventHandler(self)
         event_handler.subscribe_to_events()
+        
         super().run()
-        self.update_presence(status="Test")
     
-    # async def update(self, status) -> None:
-        # return await super().update_presence(status=status)
-    
+    async def update_bot_presence(self):
+        # Get guild count and guildID list
+        guild_IDs = list(map(lambda x: x.id, await self.rest.fetch_my_guilds())) # Surely there's a better way to do this
+        guild_count = len(guild_IDs)
+        member_count = 0
+        for guild_ID in guild_IDs:
+            member_count += (len(self.cache.get_members_view_for_guild(guild_ID))) # Especially this part jesus christ
+        await self.update_presence(activity=hikari.Activity(type=hikari.ActivityType.PLAYING, name=f"CEbot v{VERSION} | {member_count} users on {guild_count} servers"))
+
     @classmethod
     def auto_embed(self,**kwargs):
         """
@@ -100,3 +106,4 @@ class Bot(hikari.GatewayBot):
             )
         return embed
 
+bot = Bot()
