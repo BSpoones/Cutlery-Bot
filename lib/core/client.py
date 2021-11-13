@@ -1,5 +1,5 @@
 from pathlib import Path
-import hikari, tanjun
+import hikari, tanjun, logging
 
 
 class Client(tanjun.Client):
@@ -10,5 +10,5 @@ class Client(tanjun.Client):
         path = Path("./lib/modules")
         for ext in path.glob(("**/") + "[!_]*.py"):
             super().load_modules(".".join([*ext.parts[:-1], ext.stem]))
-            print("loaded",ext)
+            logging.info(f"Loaded {ext} module.")
         return self
