@@ -16,8 +16,8 @@ class Ping(tanjun.Component):
         embed = Bot.auto_embed(
             type="info",
             author="Utility",
-            title="Carlos Estabot Ping",
-            description=f"> Ping: `{ping:,.0f}` ms",
+            title="Ping",
+            description=f"> Carlos Estabot ping: `{ping:,.0f}` ms",
             ctx=ctx
         )
         await ctx.respond(embed)
