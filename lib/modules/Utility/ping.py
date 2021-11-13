@@ -17,7 +17,7 @@ class Ping(tanjun.Component):
             type="info",
             author="Utility",
             title="Ping",
-            description=f"> Carlos Estabot ping: `{ping:,.0f}` ms",
+            description=f"> Carlos Estabot ping: `{ping:,.0f}` ms.",
             ctx=ctx
         )
         await ctx.respond(embed)
