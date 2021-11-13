@@ -4,7 +4,7 @@ from data.bot.data import VERSION
 from lib.core.event_handler import EventHandler
 from .client import Client
 from hikari import Embed
-
+from ..db import db
     
 # My own personal functions to aid development
 def get_colour_from_ctx(ctx: tanjun.abc.Context):
@@ -34,7 +34,6 @@ class Bot(hikari.GatewayBot):
         self.create_client()
         event_handler = EventHandler(self)
         event_handler.subscribe_to_events()
-        
         super().run()
     
     async def update_bot_presence(self):
