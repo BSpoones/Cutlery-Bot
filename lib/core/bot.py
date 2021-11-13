@@ -39,11 +39,10 @@ class Bot(hikari.GatewayBot):
     
     async def update_bot_presence(self):
         # Get guild count and guildID list
-        guild_IDs = list(map(lambda x: x.id, await self.rest.fetch_my_guilds())) # Surely there's a better way to do this
-        guild_count = len(guild_IDs)
-        member_count = 0
-        for guild_ID in guild_IDs:
-            member_count += (len(self.cache.get_members_view_for_guild(guild_ID))) # Especially this part jesus christ
+        
+        guild_count = len(await self.rest.fetch_my_guilds())
+        member_count = sum(map(len, self.cache.get_members_view().values()))
+
         await self.update_presence(activity=hikari.Activity(type=hikari.ActivityType.PLAYING, name=f"CEbot v{VERSION} | {member_count} users on {guild_count} servers"))
 
     @classmethod
