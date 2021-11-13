@@ -1,4 +1,4 @@
-from lib.core import Bot
+from lib.core.bot import bot
 
-bot = Bot()
+
 bot.run()
