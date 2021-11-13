@@ -1,4 +1,6 @@
-import hikari, tanjun
+import hikari, tanjun, logging
+
+from data.bot.data import VERSION
 
 
 class EventHandler():
@@ -13,6 +15,7 @@ class EventHandler():
             hikari.GuildLeaveEvent: self.on_guild_leave,
             hikari.MemberCreateEvent: self.on_member_join,
             hikari.MemberDeleteEvent: self.on_member_leave,
+            hikari.MessageCreateEvent: self.on_message,
         }
 
     def subscribe_to_events(self):
@@ -23,25 +26,33 @@ class EventHandler():
 
 
     async def on_starting(self, event: hikari.StartingEvent):
-        pass
+        logging.info("Starting Carlos Estabot.....")
     async def on_started(self, event: hikari.StartedEvent):
-        pass
-    async def on_stopping(self):
-        pass
-    async def on_stopped(self):
-        pass
-    async def on_reconnect(self):
-        pass
-    async def on_guild_join(self):
-        pass
-    async def on_guild_leave(self):
-        pass
-    async def on_member_join(self):
-        pass
-    async def on_member_leave(self):
-        pass
-    async def on_message(self):
-        pass
+        logging.info(f"Carlos Estabot v{VERSION} Loaded!")
+        await self.bot.update_bot_presence()
+        
+
+        
+    async def on_stopping(self, event):
+        logging.info("Stopping Carlos Estabot.....")
+        
+    async def on_stopped(self, event):
+        logging.info("Carlos Estabot Stopped!")
+        
+    async def on_guild_join(self, event):
+        await self.bot.update_bot_presence()
+
+    async def on_guild_leave(self, event):
+        await self.bot.update_bot_presence()
+        
+    async def on_member_join(self, event):
+        await self.bot.update_bot_presence()
+        
+    async def on_member_leave(self, event):
+        await self.bot.update_bot_presence()
+        
+    async def on_message(self,event: hikari.MessageCreateEvent):
+        logging.info(f"{event.author} typed: {event.content}")
     async def on_message_edit(self):
         pass
     async def on_message_delete(self):
