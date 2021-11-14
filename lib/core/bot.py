@@ -92,8 +92,7 @@ class Bot(hikari.GatewayBot):
                 embed.set_author(name="Error", icon="https://freeiconshop.com/wp-content/uploads/edd/error-flat.png")
             case "lesson":
                 embed.set_author(name=kwargs["schoolname"],icon=kwargs["iconurl"])
-            case "reminder-user":
-                embed.set_author(name=kwargs["member"],icon=(kwargs["member"].avatar_url))
+                embed.set_footer(text=kwargs["member"].display_name,icon=(kwargs["member"].avatar_url))
         if embed_type == "emoji":
             embed.set_image(url=kwargs["emoji_url"])
         if "ctx" in kwargs:
