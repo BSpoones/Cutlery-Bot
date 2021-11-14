@@ -62,7 +62,7 @@ class Bot(hikari.GatewayBot):
                     colour = hikari.Colour(0xe74c3c)
                 case "schedule" | "info" | "emoji":
                     colour = get_colour_from_ctx(ctx=kwargs["ctx"])
-                case "reminder-user":
+                case "reminder-user" | "userinfo":
                     colour = get_colour_from_member(kwargs["member"])
                 case _:
                     print("This shouldn't happen")
@@ -92,6 +92,7 @@ class Bot(hikari.GatewayBot):
                 embed.set_author(name="Error", icon="https://freeiconshop.com/wp-content/uploads/edd/error-flat.png")
             case "lesson":
                 embed.set_author(name=kwargs["schoolname"],icon=kwargs["iconurl"])
+            case "reminder-user" | "userinfo":
                 embed.set_footer(text=kwargs["member"].display_name,icon=(kwargs["member"].avatar_url))
         if embed_type == "emoji":
             embed.set_image(url=kwargs["emoji_url"])
