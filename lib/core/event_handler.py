@@ -52,6 +52,13 @@ class EventHandler():
         await self.bot.update_bot_presence()
         
     async def on_message(self,event: hikari.MessageCreateEvent):
+        # if event.author.is_bot:
+            # return
+        try:
+            if event.embeds != []:
+                logging.info(event.embeds)
+        except:
+            pass
         logging.info(f"{event.author} typed: {event.content}")
     async def on_message_edit(self):
         pass
