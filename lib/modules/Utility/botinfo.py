@@ -10,7 +10,7 @@ from data.bot.data import VERSION as BOT_VERSION
 from platform import python_version
 from hikari import __version__ as hikari_version
 from tanjun import __version__ as tanjun_version
-
+from ...db import db
 
 
 botinfo_component = tanjun.Component()
@@ -40,7 +40,7 @@ async def botinfo_command(ctx: Context):
         with open(file) as f:
             num_lines = sum(1 for line in open(file))
             total_lines += num_lines
-    # commands_count = db.record("SELECT COUNT(Command) FROM CommandLogs")[0] <- Waiting for database to be finalised
+    commands_count = db.record("SELECT COUNT(Command) FROM CommandLogs")[0] + 1 # Adding one since this is also a command sent
 
     fields = [
         ("Owner <a:spoongif:732758190734835775>","<@724351142158401577>",False),
@@ -77,7 +77,7 @@ async def botinfo_command(ctx: Context):
         type="info",
         author="Utility",
         title="Carlos Estabot info",
-        description=f"Total lines of code: `{total_lines:,}`",#\nTotal commands sent to the bot: `{commands_count:,}`",
+        description=f"Total lines of code: `{total_lines:,}`\nTotal commands sent to the bot: `{commands_count:,}`",
         thumbnail=bot.avatar_url,
         fields=fields,
         ctx=ctx
@@ -99,6 +99,7 @@ async def botinfo_command(ctx: Context):
         .add_to_container()
     )
     await ctx.respond(embed=embed, components=[button])
+    Bot.log_command(ctx,"botinfo")
 
 
 
