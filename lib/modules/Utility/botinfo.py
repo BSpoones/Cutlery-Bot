@@ -100,6 +100,7 @@ async def botinfo_command(ctx: Context):
     )
     await ctx.respond(embed=embed, components=[button])
     Bot.log_command(ctx,"botinfo")
+    
 
 
 
