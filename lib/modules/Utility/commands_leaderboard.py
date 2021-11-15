@@ -13,7 +13,8 @@ async def command_leaderboard_command(ctx: Context):
     commands_lst = db.records("SELECT command FROM CommandLogs")
     commands_lst = [x[0] for x in commands_lst]
     a = dict(Counter(commands_lst))
-    await ctx.respond(str(a))
+    sorted_commands_dict = dict(sorted(a.items(), key=lambda item: item[1],reverse=True))
+    await ctx.respond(str(sorted_commands_dict))
     Bot.log_command(ctx,"commandleaderboard")
 
 
