@@ -1,5 +1,5 @@
 from os import stat
-import hikari, tanjun, datetime as dt, logging, json
+import hikari, tanjun, datetime as dt, logging, json, time
 from data.bot.data import VERSION
 from lib.core.event_handler import EventHandler
 from .client import Client
@@ -30,6 +30,7 @@ class Bot(hikari.GatewayBot):
             mention_prefix=True
         )
         self.client.load_modules()
+        self.client.metadata["start time"] = time.perf_counter()
     def run(self):
         self.create_client()
         event_handler = EventHandler(self)
