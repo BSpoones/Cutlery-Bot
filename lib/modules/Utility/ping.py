@@ -18,6 +18,7 @@ async def ping_command(ctx: Context):
         ctx=ctx
     )
     await ctx.respond(embed)
+    Bot.log_command(ctx,"ping")
 
 
 
