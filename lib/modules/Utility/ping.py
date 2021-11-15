@@ -4,27 +4,23 @@ from lib.core.client import Client
 import datetime as dt
 from tanjun.abc import Context as Context
 
+ping_component = tanjun.Component()
+
+@ping_component.add_slash_command
+@tanjun.as_slash_command("ping","Gets the current ping of the bot")
+async def ping_command(ctx: Context):
+    ping = ctx.shards.heartbeat_latency * 1000
+    embed = Bot.auto_embed(
+        type="info",
+        author="Utility",
+        title="Ping",
+        description=f"> Carlos Estabot ping: `{ping:,.0f}` ms.",
+        ctx=ctx
+    )
+    await ctx.respond(embed)
 
 
-class Ping(tanjun.Component):
-    def __init__(self):
-        super().__init__()
-
-    @tanjun.as_slash_command("ping","Gets the current ping of the bot")
-    async def ping_command(self, ctx: Context):
-        ping = ctx.shards.heartbeat_latency * 1000
-        embed = Bot.auto_embed(
-            type="info",
-            author="Utility",
-            title="Ping",
-            description=f"> Carlos Estabot ping: `{ping:,.0f}` ms.",
-            ctx=ctx
-        )
-        await ctx.respond(embed)
-
-
-ping_create_component = Ping()
 
 @tanjun.as_loader
 def load_components(client: Client):
-    client.add_component(ping_create_component.copy())
+    client.add_component(ping_component.copy())
