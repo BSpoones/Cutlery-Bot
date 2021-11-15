@@ -5,11 +5,9 @@ import datetime as dt
 from tanjun.abc import Context as Context
 
 
+userinfo_create_component = tanjun.Component()
 
-class Userinfo(tanjun.Component):
-    def __init__(self):
-        super().__init__()
-
+@userinfo_create_component.add_slash_command
     @tanjun.with_member_slash_option("target", "Choose a member", default=False)
     @tanjun.as_slash_command("userinfo","Shows the information on a selected user")
     async def user_info_command(self, ctx: Context, target: hikari.Member):
