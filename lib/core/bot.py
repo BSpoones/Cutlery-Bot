@@ -1,5 +1,7 @@
 from os import stat
 import hikari, tanjun, datetime as dt, logging, json, time
+
+from tanjun.abc import Context
 from data.bot.data import VERSION
 from lib.core.event_handler import EventHandler
 from .client import Client
@@ -104,5 +106,18 @@ class Bot(hikari.GatewayBot):
                 icon=ctx.member.avatar_url,
             )
         return embed
-
+    
+    @classmethod
+    def log_command(self,*args) -> str:
+        ctx: Context = args[0]
+        command = args[1]
+        try:
+            cmd_args = " ".join(args[2:])
+        except:
+            cmd_args = None
+        author = str(ctx.author.id)
+        guild = str(ctx.guild_id)
+        channel = str(ctx.channel_id)
+        db.execute("INSERT INTO `CommandLogs`(`UserID`,`GuildID`,`ChannelID`,`Command`,`Args`) VALUES (?,?,?,?,?)", author,guild,channel,command, cmd_args)
+        db.commit()
 bot = Bot()
