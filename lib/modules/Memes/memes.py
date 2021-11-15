@@ -13,7 +13,7 @@ class Memes(tanjun.Component):
     @tanjun.as_slash_command("dog","Displays the dog gif")
     async def dog(self, ctx: Context):
         await ctx.respond("https://media.giphy.com/media/LZbLMxeaSKys08I68T/giphy.gif?cid=790b7611cb6310c244356666ddbf6c231950fabc48c2e9e6&rid=giphy.gif&ct=g")
-
+        Bot.log_command(ctx,"dog")
 
 memes_create_component = Memes()
 
