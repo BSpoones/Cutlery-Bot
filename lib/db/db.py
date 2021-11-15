@@ -17,7 +17,7 @@ cxn = connect(
     password=password,
     database=database,
 )
-cur = cxn.cursor()
+cur = cxn.cursor(prepared=True)
 
 def reload():
     global cxn, cur
@@ -89,6 +89,8 @@ def multiexec(command, valueset):
 
 def scriptexec(path):
 	with open(path, "r", encoding="utf-8") as script:
-		cur.execute(script.read(), multi=True)
-
+		script_list = script.read().split(";")
+		for script in script_list:
+			cur.execute(script)
 build()
+
