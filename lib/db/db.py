@@ -89,4 +89,6 @@ def multiexec(command, valueset):
 
 def scriptexec(path):
 	with open(path, "r", encoding="utf-8") as script:
-		cur.executescript(script.read())
+		cur.execute(script.read(), multi=True)
+
+build()
