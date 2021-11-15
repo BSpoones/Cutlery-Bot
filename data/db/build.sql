@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS Lessons (
-    LessonID INT(32) PRIMARY KEY,
+    LessonID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     GroupID INT(32),
     TeacherID INT(32),
     DayOfWeek tinyint(6),
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS Lessons (
 );
 
 CREATE TABLE IF NOT EXISTS Teachers (
-    TeacherID INT(32) PRIMARY KEY,
+    TeacherID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     GroupID INT(32),
     TeacherName VARCHAR(50),
     TeacherSubject VARCHAR(100),
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS Teachers (
 );
 
 CREATE TABLE IF NOT EXISTS LessonGroups (
-    GroupID INT(32) PRIMARY KEY,
+    GroupID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     GroupOwnerID VARCHAR(18),
     GuildID VARCHAR(18),
     GroupCode VARCHAR(50),
@@ -35,14 +35,14 @@ CREATE TABLE IF NOT EXISTS LessonGroups (
 );
 
 CREATE TABLE IF NOT EXISTS Students (
-    StudentID int PRIMARY KEY,
+    StudentID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     GroupID int,
     UserID VARCHAR(18),
     Fullname text
 );
 
 CREATE TABLE IF NOT EXISTS Assignments(
-    AssignmentID int PRIMARY KEY,
+    AssignmentID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     CreatorUserID VARCHAR(18),
     GroupID VARCHAR(18),
     TeacherID VARCHAR(18),
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS Assignments(
 );
 
 CREATE TABLE IF NOT EXISTS DateReminders (
-    ReminderID int PRIMARY KEY,
+    ReminderID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     CreatorUserID VARCHAR(18),
     TargetID VARCHAR(18),
     OutputGuildID VARCHAR(18),
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS DateReminders (
 );
 
 CREATE TABLE IF NOT EXISTS RepeatingReminders (
-    ReminderID int PRIMARY KEY,
+    ReminderID  BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     CreatorUserID VARCHAR(18),
     TargetID VARCHAR(18),
     OutputGuildID VARCHAR(18),
@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS RepeatingReminders (
 );
 
 CREATE TABLE IF NOT EXISTS CommandLogs(
+    CommandLogID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     UserID VARCHAR(18),
     GuildID VARCHAR(18),
     ChannelID VARCHAR(18),
@@ -84,6 +85,7 @@ CREATE TABLE IF NOT EXISTS CommandLogs(
 );
 
 CREATE TABLE IF NOT EXISTS MessageLogs(
+    MessageLogID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     UserID VARCHAR(18),
     GuildID VARCHAR(18),
     ChannelID VARCHAR(18),
