@@ -40,7 +40,7 @@ async def botinfo_command(ctx: Context):
         with open(file) as f:
             num_lines = sum(1 for line in open(file))
             total_lines += num_lines
-    commands_count = db.record("SELECT COUNT(Command) FROM CommandLogs")[0] + 1 # Adding one since this is also a command sent
+    commands_count = db.count("SELECT COUNT(Command) FROM CommandLogs") + 1 # Adding one since this is also a command sent
 
     fields = [
         ("Owner <a:spoongif:732758190734835775>","<@724351142158401577>",False),
