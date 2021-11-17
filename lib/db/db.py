@@ -29,6 +29,14 @@ def reload():
         )
     cur = cxn.cursor()
 
+def is_connected():
+	print("TESTING CONNECTION")
+	try:
+		cxn.ping(True)
+		print("CONNECTION MAINTAINED")
+	except:
+		print("CONNECTION LOST")
+		reload()
 
 def lastrowid():
 	return cur.lastrowid
@@ -43,51 +51,64 @@ def with_commit(func):
 
 @with_commit
 def build():
+	is_connected()
 	if isfile(BUILD_PATH):
 		scriptexec(BUILD_PATH)
 
 
 def commit():
+	is_connected()
 	cxn.commit()
 
 def close():
+	is_connected()
 	cxn.close()
 
 
 def field(command, *values):
+	is_connected()
 	cur.execute(command, tuple(values))
-
 	if (fetch := cur.fetchone()) is not None:
 		return fetch[0]
 
 
 def record(command, *values):
+	is_connected()
 	cur.execute(command, tuple(values))
-
 	return cur.fetchone()
 
 
 def records(command, *values):
+	is_connected()
+
 	cur.execute(command, tuple(values))
 
 	return cur.fetchall()
 
 
 def column(command, *values):
+	is_connected()
+
 	cur.execute(command, tuple(values))
 
 	return [item[0] for item in cur.fetchall()]
 
 
 def execute(command, *values):
+	is_connected()
+
 	cur.execute(command, tuple(values))
 
 
 def multiexec(command, valueset):
+	is_connected()
+
 	cur.executemany(command, valueset)
 
 
 def scriptexec(path):
+	is_connected()
+
 	with open(path, "r", encoding="utf-8") as script:
 		script_list = script.read().split(";")
 		for script in script_list:
