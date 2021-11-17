@@ -10,6 +10,7 @@ async def on_error(ctx: tanjun.abc.Context, exc: Exception):
     from lib.core.bot import Bot 
     embed = Bot.auto_embed(
         type="Error",
+        author="Error",
         title=f"{exception_type}",
         description=f"{exception_args}",
         ctx=ctx
