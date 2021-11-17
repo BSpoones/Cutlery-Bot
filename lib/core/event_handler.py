@@ -1,4 +1,5 @@
 import hikari, tanjun, logging
+from hikari.events.base_events import ExceptionEvent
 
 from data.bot.data import VERSION
 
@@ -63,8 +64,4 @@ class EventHandler():
     async def on_message_edit(self):
         pass
     async def on_message_delete(self):
-        pass
-    async def on_error(self):
-        pass
-    async def on_command_error(self):
         pass
