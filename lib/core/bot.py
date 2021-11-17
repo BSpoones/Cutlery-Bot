@@ -8,7 +8,9 @@ from lib.core.event_handler import EventHandler
 from .client import Client
 from hikari import Embed
 from ..db import db
-    
+# logging.basicConfig(level=logging.DEBUG)
+logging.getLogger('apscheduler.executors.default').propagate = False # Prevents logging pointless info every 60 seconds
+
 # My own personal functions to aid development
 def get_colour_from_ctx(ctx: tanjun.abc.Context):
     return (ctx.member.get_top_role().color)
