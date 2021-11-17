@@ -3,6 +3,7 @@ import hikari, tanjun, datetime as dt, logging, json, time
 
 from tanjun.abc import Context
 from data.bot.data import VERSION
+from lib.core.error_handling import HOOKS
 from lib.core.event_handler import EventHandler
 from .client import Client
 from hikari import Embed
@@ -19,6 +20,8 @@ class Bot(hikari.GatewayBot):
     def __init__(self) -> None:
         with open("./secret/token") as f:
             self.token = f.read()
+
+        self.event_handler = EventHandler(self)
         super().__init__(
             token=self.token, 
             intents=hikari.Intents.ALL
@@ -30,13 +33,13 @@ class Bot(hikari.GatewayBot):
             self, 
             declare_global_commands=774301333146435604, 
             mention_prefix=True
-        )
+        ).set_hooks(HOOKS)
         self.client.load_modules()
         self.client.metadata["start time"] = time.perf_counter()
     def run(self):
         self.create_client()
-        event_handler = EventHandler(self)
-        event_handler.subscribe_to_events()
+        
+        self.event_handler.subscribe_to_events()
         super().run()
     
     async def update_bot_presence(self):
