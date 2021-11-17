@@ -44,6 +44,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
 
     embed = Bot.auto_embed(
         type="userinfo",
+        author="Utility",
         title=f"**Userinfo on {target.display_name}**",
         fields=fields,
         member = target,
