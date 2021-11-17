@@ -93,6 +93,11 @@ def column(command, *values):
 
 	return [item[0] for item in cur.fetchall()]
 
+def count(command,*values):
+	
+	cur.execute(command,tuple(values))
+	return (cur.fetchone()[0])
+
 
 def execute(command, *values):
 	is_connected()
