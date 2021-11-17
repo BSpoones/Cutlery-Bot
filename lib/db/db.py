@@ -1,6 +1,8 @@
 from mysql.connector import connect
 from os.path import isfile
 import json
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 with open("./secret/dbCredentials.json") as f:
     dbCredentials = json.load(f)
@@ -19,6 +21,24 @@ cxn = connect(
 )
 cur = cxn.cursor(prepared=True)
 
+
+def interact_with_server():
+	"""
+	Prevents database disconnecting from inactivity by sending request to
+	database every 60 seconds
+	"""
+	records("SHOW DATABASES")
+
+
+db_scheduler = AsyncIOScheduler()
+db_scheduler.add_job(
+	interact_with_server,
+	CronTrigger(
+		second=0
+	)
+)
+db_scheduler.start()
+
 def reload():
     global cxn, cur
     cxn = connect(
@@ -28,15 +48,6 @@ def reload():
             database=database,
         )
     cur = cxn.cursor()
-
-def is_connected():
-	print("TESTING CONNECTION")
-	try:
-		cxn.ping(True)
-		print("CONNECTION MAINTAINED")
-	except:
-		print("CONNECTION LOST")
-		reload()
 
 def lastrowid():
 	return cur.lastrowid
@@ -49,37 +60,38 @@ def with_commit(func):
 	return inner
 
 
+
 @with_commit
 def build():
-	is_connected()
+	
 	if isfile(BUILD_PATH):
 		scriptexec(BUILD_PATH)
 
 
 def commit():
-	is_connected()
+	
 	cxn.commit()
 
 def close():
-	is_connected()
+	
 	cxn.close()
 
 
 def field(command, *values):
-	is_connected()
+	
 	cur.execute(command, tuple(values))
 	if (fetch := cur.fetchone()) is not None:
 		return fetch[0]
 
 
 def record(command, *values):
-	is_connected()
+	
 	cur.execute(command, tuple(values))
 	return cur.fetchone()
 
 
 def records(command, *values):
-	is_connected()
+	
 
 	cur.execute(command, tuple(values))
 
@@ -87,7 +99,7 @@ def records(command, *values):
 
 
 def column(command, *values):
-	is_connected()
+	
 
 	cur.execute(command, tuple(values))
 
@@ -100,19 +112,15 @@ def count(command,*values):
 
 
 def execute(command, *values):
-	is_connected()
-
 	cur.execute(command, tuple(values))
 
 
 def multiexec(command, valueset):
-	is_connected()
-
 	cur.executemany(command, valueset)
 
 
 def scriptexec(path):
-	is_connected()
+	
 
 	with open(path, "r", encoding="utf-8") as script:
 		script_list = script.read().split(";")
