@@ -2,7 +2,7 @@ from os import stat
 import hikari, tanjun, datetime as dt, logging, json, time
 
 from tanjun.abc import Context
-from data.bot.data import VERSION
+from data.bot.data import *
 from lib.core.error_handling import HOOKS
 from lib.core.event_handler import EventHandler
 from .client import Client
@@ -33,7 +33,7 @@ class Bot(hikari.GatewayBot):
         """Function that creates the tanjun client"""
         self.client = Client.from_gateway_bot(
             self, 
-            declare_global_commands=774301333146435604, 
+            declare_global_commands=True, 
             mention_prefix=True
         ).set_hooks(HOOKS)
         self.client.load_modules()
@@ -50,7 +50,7 @@ class Bot(hikari.GatewayBot):
         guild_count = len(await self.rest.fetch_my_guilds())
         member_count = sum(map(len, self.cache.get_members_view().values()))
 
-        await self.update_presence(activity=hikari.Activity(type=hikari.ActivityType.PLAYING, name=f"CEbot v{VERSION} | {member_count} users on {guild_count} servers"))
+        await self.update_presence(activity=hikari.Activity(type=hikari.ActivityType.PLAYING, name=f"{ACTIVITY_NAME}{VERSION} | {member_count} users on {guild_count} servers"))
 
     @classmethod
     def auto_embed(self,**kwargs):

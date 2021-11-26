@@ -8,7 +8,7 @@ class Client(tanjun.Client):
     
     def load_modules(self):
         path = Path("./lib/modules")
-        for ext in path.glob(("**/") + "[!_]*.py"):
+        for ext in path.glob(("**/") + "[!_]*.py"): # Loads all but private python files
             super().load_modules(".".join([*ext.parts[:-1], ext.stem]))
             logging.info(f"Loaded {ext} module.")
         return self

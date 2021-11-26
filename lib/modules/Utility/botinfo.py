@@ -76,7 +76,7 @@ async def botinfo_command(ctx: Context):
     embed = Bot.auto_embed(
         type="info",
         author="Utility",
-        title="Carlos Estabot info",
+        title="ERL bot info",
         description=f"Total lines of code: `{total_lines:,}`\nTotal commands sent to the bot: `{commands_count:,}`",
         thumbnail=bot.avatar_url,
         fields=fields,

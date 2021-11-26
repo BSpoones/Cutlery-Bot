@@ -14,7 +14,7 @@ async def ping_command(ctx: Context):
         type="info",
         author="Utility",
         title="Ping",
-        description=f"> Carlos Estabot ping: `{ping:,.0f}` ms.",
+        description=f"> ERL bot ping: `{ping:,.0f}` ms.",
         ctx=ctx
     )
     await ctx.respond(embed)

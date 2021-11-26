@@ -27,18 +27,18 @@ class EventHandler():
 
 
     async def on_starting(self, event: hikari.StartingEvent):
-        logging.info("Starting Carlos Estabot.....")
+        logging.info("Starting ERL bot.....")
     async def on_started(self, event: hikari.StartedEvent):
-        logging.info(f"Carlos Estabot v{VERSION} Loaded!")
+        logging.info(f"ERL bot v{VERSION} Loaded!")
         await self.bot.update_bot_presence()
         
 
         
     async def on_stopping(self, event):
-        logging.info("Stopping Carlos Estabot.....")
+        logging.info("Stopping ERL bot.....")
         
     async def on_stopped(self, event):
-        logging.info("Carlos Estabot Stopped!")
+        logging.info("ERL bot Stopped!")
         
     async def on_guild_join(self, event):
         await self.bot.update_bot_presence()
