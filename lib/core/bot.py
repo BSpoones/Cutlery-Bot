@@ -33,7 +33,7 @@ class Bot(hikari.GatewayBot):
         """Function that creates the tanjun client"""
         self.client = Client.from_gateway_bot(
             self, 
-            declare_global_commands=True, 
+            declare_global_commands=774301333146435604, 
             mention_prefix=True
         ).set_hooks(HOOKS)
         self.client.load_modules()
