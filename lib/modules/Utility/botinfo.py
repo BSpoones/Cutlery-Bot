@@ -11,6 +11,7 @@ from platform import python_version
 from hikari import __version__ as hikari_version
 from tanjun import __version__ as tanjun_version
 from ...db import db
+from . import COG_TYPE
 
 
 botinfo_component = tanjun.Component()
@@ -75,7 +76,7 @@ async def botinfo_command(ctx: Context):
     ]
     embed = Bot.auto_embed(
         type="info",
-        author="Utility",
+        author=f"{COG_TYPE}",
         title="ERL bot info",
         description=f"Total lines of code: `{total_lines:,}`\nTotal commands sent to the bot: `{commands_count:,}`",
         thumbnail=bot.avatar_url,

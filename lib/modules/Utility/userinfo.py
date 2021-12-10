@@ -3,7 +3,7 @@ from lib.core.bot import Bot
 from lib.core.client import Client
 import datetime as dt
 from tanjun.abc import Context as Context
-
+from . import COG_TYPE
 
 userinfo_create_component = tanjun.Component()
 
@@ -44,7 +44,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
 
     embed = Bot.auto_embed(
         type="userinfo",
-        author="Utility",
+        author=f"{COG_TYPE}",
         title=f"**Userinfo on {target.display_name}**",
         fields=fields,
         member = target,

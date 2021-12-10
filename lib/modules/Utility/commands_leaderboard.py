@@ -6,6 +6,9 @@ from tanjun.abc import Context as Context
 from collections import Counter
 from ...db import db
 import math
+from . import COG_TYPE
+
+
 command_leaderboard_component = tanjun.Component()
 
 @command_leaderboard_component.add_slash_command
@@ -39,7 +42,7 @@ async def command_leaderboard_command(ctx: Context, page: int, amount: int):
 
     embed = Bot.auto_embed(
         type="info",
-        author="Utility",
+        author=f"{COG_TYPE}",
         title=f"Command Leaderboard | Page {page} of {last_page}",
         description = f"Showing the most used commands {message}",
         ctx=ctx

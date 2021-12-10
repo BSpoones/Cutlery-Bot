@@ -2,6 +2,8 @@ import hikari, tanjun
 from lib.core.bot import Bot
 from lib.core.client import Client
 import datetime as dt
+from . import COG_TYPE
+
 from tanjun.abc import Context as Context
 
 ping_component = tanjun.Component()
@@ -12,7 +14,7 @@ async def ping_command(ctx: Context):
     ping = ctx.shards.heartbeat_latency * 1000
     embed = Bot.auto_embed(
         type="info",
-        author="Utility",
+        author=f"{COG_TYPE}",
         title="Ping",
         description=f"> ERL bot ping: `{ping:,.0f}` ms.",
         ctx=ctx
