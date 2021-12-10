@@ -24,7 +24,7 @@ async def command_leaderboard_command(ctx: Context, page: int, amount: int):
     a = dict(Counter(commands_lst))
     sorted_commands_dict = dict(sorted(a.items(), key=lambda item: item[1],reverse=True))
     if amount is None:
-        amount = 5
+        amount = 10
     elif amount >15:
         raise ValueError("You cannot have more than 15 items per page.")
 
