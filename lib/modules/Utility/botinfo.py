@@ -45,7 +45,7 @@ async def botinfo_command(ctx: Context):
 
     fields = [
         ("Owner <a:spoongif:732758190734835775>","<@724351142158401577>",False),
-        ("Bot version",BOT_VERSION, True),
+        ("ERL version",BOT_VERSION, True),
         ("Python version",python_version(),True),
         ("Library",f"hikari-py v{hikari_version}",True),
         ("Command handler",f"hikari-tanjun v{tanjun_version}",True),
