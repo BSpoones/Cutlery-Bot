@@ -9,7 +9,7 @@ async def on_error(ctx: tanjun.abc.Context, exc: Exception):
     # Has to be imported in func as Bot class uses this to init
     from lib.core.bot import Bot 
     embed = Bot.auto_embed(
-        type="Error",
+        type="error",
         author="Error",
         title=f"{exception_type}",
         description=f"{exception_args}",
