@@ -63,7 +63,7 @@ class Bot(hikari.GatewayBot):
             embed_type = kwargs["type"]
 
         if "colour" not in kwargs:
-            match embed_type:
+            match embed_type.lower():
                 case "default":
                     colour = hikari.Colour(0x2ecc71)
                 case "error":
@@ -74,6 +74,7 @@ class Bot(hikari.GatewayBot):
                     colour = get_colour_from_member(kwargs["member"])
                 case _:
                     print("This shouldn't happen")
+                    colour = hikari.Colour(0x2ecc71)
             kwargs["colour"] = colour
 
         kwargs["timestamp"]=dt.datetime.now(tz=dt.timezone.utc)
