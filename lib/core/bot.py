@@ -97,7 +97,7 @@ class Bot(hikari.GatewayBot):
                     if "author_url" in kwargs_list:
                         embed.set_author(name=kwargs["author"],url=kwargs["author_url"])
                     else:
-                    embed.set_author(name=kwargs["author"])
+                        embed.set_author(name=kwargs["author"])
 
 
         match embed_type:
