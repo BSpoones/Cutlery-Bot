@@ -94,7 +94,11 @@ class Bot(hikari.GatewayBot):
                     for name,value, inline in kwargs["fields"]:
                         embed.add_field(name=name, value=value, inline=inline)
                 case "author":
+                    if "author_url" in kwargs_list:
+                        embed.set_author(name=kwargs["author"],url=kwargs["author_url"])
+                    else:
                     embed.set_author(name=kwargs["author"])
+
 
         match embed_type:
             case "error":
@@ -104,7 +108,7 @@ class Bot(hikari.GatewayBot):
             case "reminder-user" | "userinfo":
                 embed.set_footer(text=kwargs["member"].display_name,icon=(kwargs["member"].avatar_url))
         if embed_type == "emoji":
-            embed.set_image(url=kwargs["emoji_url"])
+            embed.set_image(kwargs["emoji_url"])
         if "ctx" in kwargs:
             ctx: tanjun.abc.Context = kwargs["ctx"]
             embed.set_footer(
