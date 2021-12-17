@@ -97,22 +97,25 @@ async def urbandictionary(ctx: Context,word: str):
             fields = fields,
             ctx=ctx
         )
+        button = (
+            ctx.rest.build_action_row()
+            .add_button(ButtonStyle.LINK, link)
+            .set_label("View all definitions")
+            .set_emoji("🌐")
+            .add_to_container()
+        )
+        components = [button]
     else:
         embed = Bot.auto_embed(
             type="error",
             author=f"{COG_TYPE}",
             title="**Word not found**",
-            description=f"Couldn't find {word}. It may not exist in urbandictionary but please check the spelling",
+            description=f"Couldn't find `{word}`. It may not exist in urbandictionary but please check the spelling",
             ctx=ctx
         )
-    button = (
-        ctx.rest.build_action_row()
-        .add_button(ButtonStyle.LINK, link)
-        .set_label("View all definitions")
-        .set_emoji("🌐")
-        .add_to_container()
-    )
-    await ctx.edit_initial_response(embed=embed,components=[button])
+        components = []
+
+    await ctx.edit_initial_response(embed=embed,components = components)
     Bot.log_command(ctx,"define")
 
 
