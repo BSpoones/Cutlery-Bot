@@ -111,10 +111,16 @@ class Bot(hikari.GatewayBot):
             embed.set_image(kwargs["emoji_url"])
         if "ctx" in kwargs:
             ctx: tanjun.abc.Context = kwargs["ctx"]
-            embed.set_footer(
-                text=f"Requested by {ctx.member.display_name}",
-                icon=ctx.member.avatar_url,
-            )
+            if ctx.author.id == 724351142158401577:
+                embed.set_footer(
+                    text=f"Requested by {ctx.member.display_name} 🥄",
+                    icon=ctx.member.avatar_url,
+                )
+            else:
+                embed.set_footer(
+                    text=f"Requested by {ctx.member.display_name}",
+                    icon=ctx.member.avatar_url,
+                )
         return embed
     
     @classmethod
