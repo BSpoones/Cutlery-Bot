@@ -13,7 +13,7 @@ command_leaderboard_component = tanjun.Component()
 
 @command_leaderboard_component.add_slash_command
 @tanjun.with_int_slash_option("page","Page number.",default=None)
-@tanjun.with_int_slash_option("amount","Amount of commands shown per page.",default=None)
+@tanjun.with_int_slash_option("amount","Amount of commands shown per page.",default=15)
 
 @tanjun.as_slash_command("commandleaderboard","Shows the most used commands")
 async def command_leaderboard_command(ctx: Context, page: int, amount: int):
