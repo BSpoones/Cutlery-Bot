@@ -53,7 +53,7 @@ async def define_command(ctx: Context, word: str):
             ctx=ctx
         )
     await ctx.edit_initial_response(content=None,embed=embed)
-    Bot.log_command(ctx,"define")
+    Bot.log_command(ctx,"define",word)
 
 
 

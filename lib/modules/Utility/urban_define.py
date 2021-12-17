@@ -116,7 +116,7 @@ async def urbandictionary(ctx: Context,word: str):
         components = []
 
     await ctx.edit_initial_response(embed=embed,components = components)
-    Bot.log_command(ctx,"define")
+    Bot.log_command(ctx,"urbandefine",word)
 
 
 
