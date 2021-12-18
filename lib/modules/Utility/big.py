@@ -10,7 +10,7 @@ from tanjun.abc import Context as Context
 big_component = tanjun.Component()
 
 @big_component.add_slash_command
-@tanjun.with_str_slash_option("emoji","Custom emoji to enlarge.")
+@tanjun.with_str_slash_option("emoji","Emoji to enlarge.")
 @tanjun.as_slash_command("big","Enlarges an emoji")
 async def big_command(ctx: Context, emoji: hikari.CustomEmoji):
     try:
