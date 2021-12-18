@@ -1,12 +1,17 @@
-from collections import Counter
+"""
+/serverinfo command
+Developed by Bspoones - Dec 2021
+Solely for use in the ERL discord bot
+Doccumentation: https://www.bspoones.com/ERL/Utility#Serverinfo
+"""
+
+
 import hikari, tanjun
-from hikari.api import voice
-from lib.core import bot
+from collections import Counter
 from lib.core.bot import Bot
 from lib.core.client import Client
-import datetime as dt
 from tanjun.abc import Context as Context
-from . import COG_TYPE
+from . import COG_TYPE, COG_LINK
 
 serverinfo_create_component = tanjun.Component()
 
@@ -22,7 +27,7 @@ async def server_info_command(ctx: Context):
         statuses.append(status)
     statuses_dict = dict(Counter(statuses))
 
-    if len(statuses_dict) != 4:
+    if len(statuses_dict) != 4: # Ensures length of 4
         if "online" not in statuses_dict:
             statuses_dict["online"] = 0
         elif "idle" not in statuses_dict:
@@ -43,12 +48,12 @@ async def server_info_command(ctx: Context):
         elif isinstance(channel,hikari.GuildCategory):
             channels.append("category")
     channels_dict = dict(Counter(channels))
-    banned_members = len(await ctx.rest.fetch_bans(guild))
+    banned_members = len(await ctx.rest.fetch_bans(guild)) # Fetch as cache does not store
     created_on = int(guild.created_at.timestamp())
     fields = [
         ("Owner",f"<@{guild.owner_id}>",False),
         ("ID",guild.id,False),
-        ("Created on", f"<t:{created_on}:d> :clock1: <t:{created_on}:R>", False),
+        ("Created on", f":clock1: <t:{created_on}:d>  (<t:{created_on}:R>)", False),
         
         ("Members", len(members), True),
         ("Humans", len(list(filter(lambda m: not ctx.cache.get_user(m).is_bot, members))), True),
@@ -65,10 +70,10 @@ async def server_info_command(ctx: Context):
         ("Statuses", f"`🟢 {statuses_dict['online']} 🟠 {statuses_dict['idle']} 🔴 {statuses_dict['dnd']} ⚪ {statuses_dict['offline']}`", False)
     ]
 
-
     embed = Bot.auto_embed(
         type="info",
         author=f"{COG_TYPE}",
+        author_url = COG_LINK,
         title=f"**Server info on `{guild.name}`**",
         fields=fields,
         thumbnail=guild.icon_url,
@@ -76,7 +81,6 @@ async def server_info_command(ctx: Context):
     )
     await ctx.respond(embed=embed)
     Bot.log_command(ctx,"serverinfo")
-
 
 
 @tanjun.as_loader
