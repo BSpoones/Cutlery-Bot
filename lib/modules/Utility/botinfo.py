@@ -39,7 +39,7 @@ async def botinfo_command(ctx: Context):
     total_lines = 0
     for file in files:
         with open(file) as f:
-            num_lines = sum(1 for line in open(file))
+            num_lines = sum(1 for line in open(file,encoding="utf8"))
             total_lines += num_lines
     commands_count = db.count("SELECT COUNT(Command) FROM CommandLogs") + 1 # Adding one since this is also a command sent
 
