@@ -1,30 +1,34 @@
-import hikari, tanjun
-from data.bot.data import VERSION
+"""
+/version command
+Developed by Bspoones - Dec 2021
+Solely for use in the ERL discord bot
+Doccumentation: https://www.bspoones.com/ERL/Utility#Version
+"""
+import tanjun
 from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import Context as Context
-from . import COG_TYPE
+from data.bot.data import VERSION
 from hikari import __version__ as hikari_version
 from tanjun import __version__ as tanjun_version
 from platform import python_version
-
+from . import COG_TYPE, COG_LINK
 
 version_component = tanjun.Component()
 
 @version_component.add_slash_command
-@tanjun.as_slash_command("version","Gets the bot's version")
+@tanjun.as_slash_command("version","Get ERL's version")
 async def version_command(ctx: Context):
     embed = Bot.auto_embed(
         type="info",
         author=f"{COG_TYPE}",
+        author_url = COG_LINK,
         title="Version",
         description=f"> ERL version: `{VERSION}`\n> Python version: `{python_version()}`\n> Hikari version: `{hikari_version}`\n> Tanjun version: `{tanjun_version}`",
         ctx=ctx
     )
     await ctx.respond(embed)
     Bot.log_command(ctx,"version")
-
-
 
 @tanjun.as_loader
 def load_components(client: Client):
