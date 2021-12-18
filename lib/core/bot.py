@@ -43,6 +43,7 @@ class Bot(hikari.GatewayBot):
         
         self.event_handler.subscribe_to_events()
         super().run()
+        self.update_bot_presence()
     
     async def update_bot_presence(self):
         # Get guild count and guildID list
@@ -50,7 +51,7 @@ class Bot(hikari.GatewayBot):
         guild_count = len(await self.rest.fetch_my_guilds())
         member_count = sum(map(len, self.cache.get_members_view().values()))
 
-        await self.update_presence(activity=hikari.Activity(type=hikari.ActivityType.PLAYING, name=f"{ACTIVITY_NAME}{VERSION} | {member_count} users on {guild_count} servers"))
+        await self.update_presence(status=hikari.Status.DO_NOT_DISTURB,activity=hikari.Activity(type=hikari.ActivityType.PLAYING, name=f"{ACTIVITY_NAME}{VERSION} | {member_count} users on {guild_count} servers"))
 
     @classmethod
     def auto_embed(self,**kwargs):
