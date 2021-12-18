@@ -1,26 +1,32 @@
-import hikari, tanjun
+"""
+/botinfo command
+Developed by Bspoones - Dec 2021
+Solely for use in the ERL discord bot
+Doccumentation: https://www.bspoones.com/ERL/Utility#BotInfo
+"""
+
+import tanjun, time, os, platform
+from hikari import __version__ as hikari_version
 from hikari.messages import ButtonStyle
-from lib.core.bot import Bot
-from lib.core.client import Client
-import time, os, platform
+from tanjun import __version__ as tanjun_version
 from tanjun.abc import Context as Context
-from psutil import Process, cpu_freq, cpu_times, virtual_memory
+from psutil import Process, cpu_freq, virtual_memory
+from platform import python_version
 from humanfriendly import format_timespan
 from data.bot.data import VERSION as BOT_VERSION
-from platform import python_version
-from hikari import __version__ as hikari_version
-from tanjun import __version__ as tanjun_version
+from lib.core.bot import Bot
+from lib.core.client import Client
 from ...db import db
-from . import COG_TYPE
+from . import COG_TYPE, COG_LINK
 
 
 botinfo_component = tanjun.Component()
 
-
 @botinfo_component.with_slash_command
-@tanjun.as_slash_command("botinfo","View bot's info")
+@tanjun.as_slash_command("botinfo","View ERL's info")
 async def botinfo_command(ctx: Context):
     bot = await ctx.rest.fetch_my_user()
+
     proc = Process()
     with proc.oneshot():
         uptime = format_timespan((time.perf_counter()-ctx.client.metadata["start time"]))
@@ -77,6 +83,7 @@ async def botinfo_command(ctx: Context):
     embed = Bot.auto_embed(
         type="info",
         author=f"{COG_TYPE}",
+        author_url = COG_LINK,
         title="ERL bot info",
         description=f"Total lines of code: `{total_lines:,}`\nTotal commands sent to the bot: `{commands_count:,}`",
         thumbnail=bot.avatar_url,
@@ -89,7 +96,7 @@ async def botinfo_command(ctx: Context):
         .add_button(ButtonStyle.LINK, "http://bspoones.com/")
         .set_label("Website")
         .add_to_container()
-        .add_button(ButtonStyle.LINK, "https://github.com/BSpoones/Carlos-Estabot")
+        .add_button(ButtonStyle.LINK, "https://github.com/BSpoones/ERL")
         .set_label("Source")
         .add_to_container()
         .add_button(
@@ -102,8 +109,6 @@ async def botinfo_command(ctx: Context):
     await ctx.respond(embed=embed, components=[button])
     Bot.log_command(ctx,"botinfo")
     
-
-
 
 @tanjun.as_loader
 def load_components(client: Client):
