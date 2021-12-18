@@ -1,17 +1,18 @@
+"""
+/urbandefine command
+Developed by Bspoones - Dec 2021
+Solely for use in the ERL discord bot
+Doccumentation: https://www.bspoones.com/ERL/Utility#UrbanDefine
+"""
 
-
-from PyDictionary import PyDictionary
-import hikari, tanjun
+import tanjun, json, re
 from hikari.messages import ButtonStyle
 from lib.core.bot import Bot
 from lib.core.client import Client
-import datetime as dt, time
 from tanjun.abc import Context as Context
-from humanfriendly import format_timespan
-from . import COG_TYPE
-import json, re
 from urllib.request import urlopen
 from urllib.parse import quote as urlquote
+from . import COG_TYPE, COG_LINK
 
 UD_DEFINE_URL = 'https://api.urbandictionary.com/v0/define?term='
 
@@ -71,7 +72,8 @@ async def urbandictionary(ctx: Context,word: str):
     await ctx.respond(
         embed = Bot.auto_embed(
             type="info",
-            author=f"{COG_TYPE}", 
+            author=f"{COG_TYPE}",
+            author_url = COG_LINK,
             title=f"**Urban definition of `{word}`:**",
             description=":mag_right: Searching please wait....",
             ctx=ctx
@@ -93,6 +95,7 @@ async def urbandictionary(ctx: Context,word: str):
         embed = Bot.auto_embed(
             type="info",
             author=f"{COG_TYPE}",
+            author_url = COG_LINK, 
             title=f"Urban Dictionary definition of `{word}`:", 
             fields = fields,
             ctx=ctx
@@ -109,6 +112,7 @@ async def urbandictionary(ctx: Context,word: str):
         embed = Bot.auto_embed(
             type="error",
             author=f"{COG_TYPE}",
+            author_url = COG_LINK,
             title="**Word not found**",
             description=f"Couldn't find `{word}`. It may not exist in urbandictionary but please check the spelling",
             ctx=ctx
