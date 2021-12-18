@@ -1,11 +1,16 @@
-import hikari, tanjun
+"""
+/big command
+Developed by Bspoones - Dec 2021
+Solely for use in the ERL discord bot
+Doccumentation: https://www.bspoones.com/ERL/Utility#Big
+"""
+
+import hikari, tanjun, requests,logging
 from lib.core.bot import Bot
 from lib.core.client import Client
-import datetime as dt
-from . import COG_LINK, COG_TYPE
-import requests,logging
-
 from tanjun.abc import Context as Context
+from . import COG_LINK, COG_TYPE
+
 
 big_component = tanjun.Component()
 
@@ -13,6 +18,7 @@ big_component = tanjun.Component()
 @tanjun.with_str_slash_option("emoji","Emoji to enlarge.")
 @tanjun.as_slash_command("big","Enlarges an emoji")
 async def big_command(ctx: Context, emoji: hikari.CustomEmoji):
+    # Parses both types of emoji to support any and all discord emoji
     try:
         emoji = hikari.CustomEmoji.parse(emoji)
         created_at = int(emoji.created_at.timestamp())
