@@ -1,9 +1,14 @@
-import hikari, tanjun
+"""
+/type command
+Developed by Bspoones - Dec 2021
+Solely for use in the ERL discord bot
+Doccumentation: https://www.bspoones.com/ERL/Utility#Type
+"""
+
+import tanjun
 from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import Context as Context
-from . import COG_TYPE
-
 
 type_component = tanjun.Component()
 
@@ -14,13 +19,11 @@ type_component = tanjun.Component()
 async def type_command(ctx: Context, message: str, private: bool):
     if private:
         await ctx.respond("Typing....")
-        await ctx.delete_initial_response() # To be improved, no idea how to though
+        await ctx.delete_initial_response() # NOTE: To be improved, no idea how to though
         await ctx.get_channel().send(message)
     else:
         await ctx.respond(message)
     Bot.log_command(ctx,"type",message,private)
-
-
 
 @tanjun.as_loader
 def load_components(client: Client):
