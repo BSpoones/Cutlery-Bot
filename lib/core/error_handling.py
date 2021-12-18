@@ -5,7 +5,6 @@ HOOKS = tanjun.AnyHooks()
 @HOOKS.with_on_error
 async def on_error(ctx: tanjun.abc.Context, exc: Exception):
     exception_type = (type(exc).__name__)
-    print(exc.args)
     exception_args = "\n".join(list(map(str,exc.args)))
     # Has to be imported in func as Bot class uses this to init
     from lib.core.bot import Bot 
