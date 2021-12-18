@@ -28,16 +28,13 @@ async def define_command(ctx: Context, word: str):
         )
     )
     if definition is not None:
-        newkeys = definition.keys()
-        newmsg = definition.values()
-        
-        for item in zip(newkeys,newmsg):
+        fields = []
+        for item in definition.items():
             message = ""
             word_type=(item[0])
-            for chr in item[1][:2]:
-                message +="- "+(chr.capitalize())
-                message += "\n"
-        fields = [(word_type,message,False)]
+            for chr in item[1][:3]: # Second positional decides how many definitions are shown
+                message +=f"- {chr.capitalize()} \n"
+            fields.append((word_type,message,False))
         embed = Bot.auto_embed(
             type="info",
             author=f"{COG_TYPE}",
