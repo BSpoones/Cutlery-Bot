@@ -14,7 +14,7 @@ define_component = tanjun.Component()
 
 @define_component.add_slash_command
 @tanjun.with_str_slash_option("word","Choose a word to get the definition for")
-@tanjun.as_slash_command("define","Gets the current define of the bot")
+@tanjun.as_slash_command("define","Gets the current definition of a word")
 async def define_command(ctx: Context, word: str):
     dictionary = PyDictionary()
     definition = dictionary.meaning(word)
