@@ -1,27 +1,31 @@
+"""
+/define command
+Developed by Bspoones - Dec 2021
+Solely for use in the ERL discord bot
+Doccumentation: https://www.bspoones.com/ERL/Utility#Define
+"""
 
-
+import tanjun
+from tanjun.abc import Context as Context
 from PyDictionary import PyDictionary
-import hikari, tanjun
+from humanfriendly import format_timespan
 from lib.core.bot import Bot
 from lib.core.client import Client
-import datetime as dt, time
-from tanjun.abc import Context as Context
-from humanfriendly import format_timespan
-from . import COG_TYPE
+from . import COG_TYPE, COG_LINK
 
 
 define_component = tanjun.Component()
 
 @define_component.add_slash_command
 @tanjun.with_str_slash_option("word","Choose a word to get the definition for")
-@tanjun.as_slash_command("define","Gets the current definition of a word")
+@tanjun.as_slash_command("define","Gets the definition of a word")
 async def define_command(ctx: Context, word: str):
-    dictionary = PyDictionary()
-    definition = dictionary.meaning(word)
-    await ctx.respond(
+    definition = PyDictionary.meaning(word)
+    await ctx.respond( # Wait message
         embed = Bot.auto_embed(
             type="info",
             author=f"{COG_TYPE}", 
+            author_url = COG_LINK,
             title=f"**Definition of `{word}`:**",
             description=":mag_right: Searching please wait....",
             ctx=ctx
@@ -38,6 +42,7 @@ async def define_command(ctx: Context, word: str):
         embed = Bot.auto_embed(
             type="info",
             author=f"{COG_TYPE}",
+            author_url = COG_LINK,
             title=f"Definition of `{word}`:",
             fields=fields,
             ctx=ctx
