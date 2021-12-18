@@ -31,8 +31,12 @@ async def user_info_command(ctx: Context, target: hikari.Member):
             ("Username", str(target), False),
             ("Top role",target.get_top_role().mention , False),
             ("Roles",(f"{' | '.join(r.mention for r in roles)}"), False),
-            # ("Activity", f"{str(target.activity.type).split('.')[-1].title() if target.activity else 'N/A'} {target.activity.name if target.activity else ''}", False),
-            # Activity will remain disabled until i learn how to actually use it  
+            (
+                "Activity", 
+                # Not my proudest work below but it works
+                f"**{str(activity.type).split('.')[-1].title() if activity else 'N/A'}** {('`'+activity.state+'`' if activity.state is not None else '`'+activity.name+'`') if activity else ''}", 
+                False
+            ),
             ("Bot?", target.is_bot, True),
             ("ID", target.id, True),
             ("Status", f"{status_emoji} {status}", True),
