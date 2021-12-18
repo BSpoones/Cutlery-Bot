@@ -1,9 +1,14 @@
+"""
+/userinfo command
+Developed by Bspoones - Dec 2021
+Solely for use in the ERL discord bot
+Doccumentation: https://www.bspoones.com/ERL/Utility#Userinfo
+"""
 import hikari, tanjun
 from lib.core.bot import Bot
 from lib.core.client import Client
-import datetime as dt
 from tanjun.abc import Context as Context
-from . import COG_TYPE
+from . import COG_TYPE, COG_LINK
 
 userinfo_create_component = tanjun.Component()
 
@@ -12,10 +17,14 @@ userinfo_create_component = tanjun.Component()
 @tanjun.as_slash_command("userinfo","Shows the information on a selected user")
 async def user_info_command(ctx: Context, target: hikari.Member):
     target = target or ctx.member
+    try:
+        activity = (target.get_presence().activities[0])
+    except:
+        activity = None
     roles = (await target.fetch_roles())[1:]  # All but @everyone.
     created_at = int(target.created_at.timestamp())
     joined_at = int(target.joined_at.timestamp())
-    status = target.get_presence().visible_status if target.get_presence() else "Offline"
+    status = target.get_presence().visible_status if target.get_presence() else "offline"
     match status:
         case "dnd":
             status_emoji = "🔴"
@@ -23,7 +32,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
             status_emoji = "🟠"
         case "online":
             status_emoji = "🟢"
-        case "Offline":
+        case "offline":
             status_emoji = "⚪"
         case _:
             status_emoji = "⚪"
@@ -39,7 +48,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
             ),
             ("Bot?", target.is_bot, True),
             ("ID", target.id, True),
-            ("Status", f"{status_emoji} {status}", True),
+            ("Status", f"{status_emoji} {status.capitalize()}", True),
             
             ("Created on", f"<t:{created_at}:d> \n:clock1: <t:{created_at}:R>", True),
             ("Joined on", f"<t:{joined_at}:d> \n:clock1: <t:{joined_at}:R>", True),
@@ -49,6 +58,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
     embed = Bot.auto_embed(
         type="userinfo",
         author=f"{COG_TYPE}",
+        author_url = COG_LINK,
         title=f"**Userinfo on {target.display_name}**",
         fields=fields,
         member = target,
