@@ -10,8 +10,7 @@ purge_limit = 25
 purge_component = tanjun.Component()
 
 @purge_component.add_slash_command
-@tanjun.with_int_slash_option("limit","Amount of messages to delete")
-@tanjun.as_slash_command("purge","Gets the current purge of the bot")
+@tanjun.with_int_slash_option("limit","Amount of messages to delete", default=1)
 async def purge_command(ctx: Context, limit: int):
     if limit <= purge_limit:
         msgs = (await ctx.rest.fetch_messages(ctx.channel_id).limit(limit))
