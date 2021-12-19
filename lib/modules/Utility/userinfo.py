@@ -22,6 +22,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
     except:
         activity = None
     roles = (await target.fetch_roles())[1:]  # All but @everyone.
+    top_role = target.get_top_role()
     created_at = int(target.created_at.timestamp())
     joined_at = int(target.joined_at.timestamp())
     status = target.get_presence().visible_status if target.get_presence() else "offline"
@@ -38,8 +39,8 @@ async def user_info_command(ctx: Context, target: hikari.Member):
             status_emoji = "⚪"
     fields = [
             ("Username", str(target), False),
-            ("Top role",target.get_top_role().mention , False),
-            ("Roles",(f"{' | '.join(r.mention for r in roles)}"), False),
+            ("Top role",f"{top_role.mention if (str(top_role) != '@everyone') else 'No roles'}", False),
+            ("Roles",(f"{' | '.join(r.mention for r in roles) if len(roles) > 0 else 'No roles'}"), False),
             (
                 "Activity", 
                 # Not my proudest work below but it works
