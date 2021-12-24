@@ -51,28 +51,20 @@ CREATE TABLE IF NOT EXISTS Assignments(
     TimeSent timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS DateReminders (
+CREATE TABLE IF NOT EXISTS Reminders (
     ReminderID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    CreatorUserID VARCHAR(18),
+    CreatorID VARCHAR(18),
     TargetID VARCHAR(18),
-    OutputGuildID VARCHAR(18),
-    OutputChannelID VARCHAR(18),
-    ReminderDatetime datetime,
-    Content text,
-    TimeSent timestamp DEFAULT CURRENT_TIMESTAMP
+    GroupID VARCHAR(18),
+    ChannelID VARCHAR(18),
+    ReminderType VARCHAR(1), -- Either R or S (Repeating or single), 1 chars
+    DateType VARCHAR(8), -- YYYYMMDD is the longest input with 8 chars
+    Date VARCHAR(9), -- Wednesday is longest input with 9 chars
+    Time VARCHAR(4), -- HHMM is longest input with 4 chars
+    Todo text,
+    Private BOOL
 );
 
-CREATE TABLE IF NOT EXISTS RepeatingReminders (
-    ReminderID  BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    CreatorUserID VARCHAR(18),
-    TargetID VARCHAR(18),
-    OutputGuildID VARCHAR(18),
-    OutputChannelID VARCHAR(18),
-    RepeatType char,
-    ReminderDay char,
-    Content text,
-    TimeSent timestamp DEFAULT CURRENT_TIMESTAMP
-);
 
 CREATE TABLE IF NOT EXISTS CommandLogs(
     CommandLogID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
