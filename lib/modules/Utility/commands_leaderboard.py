@@ -21,8 +21,10 @@ command_leaderboard_component = tanjun.Component()
 @tanjun.with_int_slash_option("page","Page number.",default=None)
 @tanjun.with_int_slash_option("amount","Amount of commands shown per page.",default=PAGE_LIMIT)
 @tanjun.as_slash_command("commandleaderboard","Shows the most used commands")
-async def command_leaderboard_command(ctx: Context, page: int, amount: int):
-    commands_lst = db.records("SELECT command FROM CommandLogs")
+    if serveronly:
+        commands_lst = db.records("SELECT command FROM CommandLogs WHERE GuildID = ?",ctx.guild_id)
+    else:
+        commands_lst = db.records("SELECT command FROM CommandLogs")
     commands_lst = [x[0] for x in commands_lst]
 
     a = dict(Counter(commands_lst))
