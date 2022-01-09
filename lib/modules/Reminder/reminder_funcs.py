@@ -94,6 +94,10 @@ class Reminder():
                     trigger,
                     args = [reminder]
                     )
+        self.reminder_scheduler.add_job(
+            self.send_missed_reminders,
+            CronTrigger(minute=7)
+        )
         self.reminder_scheduler.start()
     
     async def send_public_reminder(self, *args):
@@ -190,8 +194,34 @@ class Reminder():
         )
         return embed
         
-    def send_missed_reminders():
-        pass
+    async def send_missed_reminders(self):
+        reminders = db.records("SELECT * FROM Reminders")
+        current_date = datetime.datetime.today()
+        for reminder in reminders:
+            reminder_type = reminder[5]
+            if reminder_type == "S":
+                reminder_id = reminder[0]
+                date = reminder[7]
+                time = reminder[8]
+
+                reminder_datetime = datetime.datetime.strptime(f"{date}{time}","%Y%m%d%H%M%S")
+                if reminder_datetime < current_date:
+                    private = reminder[10]
+                    channel_id = reminder[4]
+                    target_id = reminder[2]
+                    group_id = reminder[3]
+                    embed = await self.create_reminder_output(reminder) 
+                    db.execute("DELETE FROM Reminders WHERE ReminderID = ?",reminder_id)
+                    if private:
+                        user = await self.bot.rest.fetch_member(group_id,target_id)
+                        await user.send(embed=embed)
+                    else:
+                        embed = await self.create_reminder_output(reminder) 
+                        db.execute("DELETE FROM Reminders WHERE ReminderID = ?",reminder_id)
+                        await self.bot.rest.create_message(channel_id,f"<@{target_id}>",embed=embed,user_mentions=True)
+                    
+                
+            
 
 
 @tanjun.as_loader
