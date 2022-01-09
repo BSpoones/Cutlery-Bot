@@ -3,7 +3,7 @@ import logging, hikari, tanjun
 HOOKS = tanjun.AnyHooks()
 
 @HOOKS.with_on_error
-async def on_error(ctx: tanjun.abc.Context, exc: Exception):
+async def on_error(ctx: tanjun.SlashContext, exc: Exception):
     exception_type = (type(exc).__name__)
     exception_args = "\n".join(list(map(str,exc.args)))
     # Has to be imported in func as Bot class uses this to init
@@ -16,4 +16,7 @@ async def on_error(ctx: tanjun.abc.Context, exc: Exception):
         ctx=ctx
     )
     logging.error(f"{exception_type} {str(exception_args)}")
-    await ctx.respond(embed=embed)
+    try:
+        await ctx.create_initial_response(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    except:
+        await ctx.edit_initial_response(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
