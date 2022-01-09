@@ -60,9 +60,10 @@ CREATE TABLE IF NOT EXISTS Reminders (
     ReminderType VARCHAR(1), -- Either R or S (Repeating or single), 1 chars
     DateType VARCHAR(8), -- YYYYMMDD is the longest input with 8 chars
     Date VARCHAR(9), -- Wednesday is longest input with 9 chars
-    Time VARCHAR(4), -- HHMM is longest input with 4 chars
+    Time VARCHAR(6), -- HHMMSS is longest input with 6 chars
     Todo text,
-    Private BOOL
+    Private BOOL,
+    TimeSent timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 
