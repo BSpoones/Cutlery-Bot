@@ -71,7 +71,8 @@ class Bot(hikari.GatewayBot):
                     colour = hikari.Colour(0xe74c3c)
                 case "schedule" | "info" | "emoji":
                     colour = get_colour_from_ctx(ctx=kwargs["ctx"])
-                case "reminder-user" | "userinfo":
+                    if str(colour) == "#000000":
+                        colour = hikari.Colour(0x206694)
                     colour = get_colour_from_member(kwargs["member"])
                 case _:
                     print("This shouldn't happen")
