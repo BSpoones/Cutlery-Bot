@@ -73,10 +73,14 @@ class Bot(hikari.GatewayBot):
                     colour = get_colour_from_ctx(ctx=kwargs["ctx"])
                     if str(colour) == "#000000":
                         colour = hikari.Colour(0x206694)
+                case "userinfo":
                     colour = get_colour_from_member(kwargs["member"])
                 case _:
-                    print("This shouldn't happen")
-                    colour = hikari.Colour(0x2ecc71)
+                    if "member" in kwargs:
+                        colour = get_colour_from_member(kwargs["member"])
+                    else:
+                        logging.error("This shouldn't happen")
+                        colour = hikari.Colour(0x2ecc71)
             kwargs["colour"] = colour
 
         kwargs["timestamp"]=dt.datetime.now(tz=dt.timezone.utc)
@@ -107,8 +111,10 @@ class Bot(hikari.GatewayBot):
                 embed.set_author(name="Error", icon="https://freeiconshop.com/wp-content/uploads/edd/error-flat.png")
             case "lesson":
                 embed.set_author(name=kwargs["schoolname"],icon=kwargs["iconurl"])
-            case "reminder-user" | "userinfo":
+            case "userinfo":
                 embed.set_footer(text=kwargs["member"].display_name,icon=(kwargs["member"].avatar_url))
+            case "reminder":
+                embed.set_footer(text=kwargs["remindertext"],icon="https://freeiconshop.com/wp-content/uploads/edd/notification-outlined-filled.png")
         if embed_type == "emoji":
             embed.set_image(kwargs["emoji_url"])
         if "ctx" in kwargs:
