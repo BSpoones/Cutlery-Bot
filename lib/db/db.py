@@ -1,9 +1,9 @@
 from mysql.connector import connect
 from os.path import isfile
-import json
+import json, logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-
+from mysql.connector.errors import OperationalError
 with open("./secret/dbCredentials.json") as f:
     dbCredentials = json.load(f)
     host = dbCredentials["host"]
@@ -18,6 +18,7 @@ cxn = connect(
     user=user,
     password=password,
     database=database,
+
 )
 cur = cxn.cursor(prepared=True)
 
@@ -27,8 +28,11 @@ def interact_with_server():
 	Prevents database disconnecting from inactivity by sending request to
 	database every 60 seconds
 	"""
-	records("SHOW DATABASES")
-
+	try:
+		records("SHOW DATABASES")
+	except OperationalError: # For when ERL loses connection to db
+		reload()
+		logging.error("Connection to database lost.")
 
 db_scheduler = AsyncIOScheduler()
 db_scheduler.add_job(
