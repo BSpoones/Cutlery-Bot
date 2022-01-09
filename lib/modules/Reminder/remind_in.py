@@ -6,7 +6,6 @@ Doccumentation: https://www.bspoones.com/ERL/Reminder#In
 """
 
 import tanjun, hikari, re, datetime
-from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from lib.core.bot import Bot
 from lib.core.client import Client
@@ -55,7 +54,7 @@ async def remind_in_command(
         seconds = match.group(7)
     weeks = int(weeks) + (52*int(years))
     current_datetime = datetime.datetime.today()
-    new_datetime = current_datetime + timedelta(
+    new_datetime = current_datetime + datetime.timedelta(
         weeks=int(weeks),
         days=int(days),
         hours=int(hours),

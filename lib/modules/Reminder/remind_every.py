@@ -6,8 +6,7 @@ Doccumentation: https://www.bspoones.com/ERL/Reminder#Every
 """
 
 
-import tanjun, hikari, re, asyncio, datetime
-from datetime import datetime, timedelta
+import tanjun, hikari, re, datetime
 from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import Context as Context
@@ -85,20 +84,20 @@ async def remind_every_command(
         if current_time < time_datetime_time: # If current time is before the reminder time
             next_timestamp = int(current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6])).timestamp())
         elif current_time > time_datetime_time:
-            next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+timedelta(days=1)).timestamp())
+            next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=1)).timestamp())
     elif date_type == "weekday":
         if current_time < time_datetime_time:
             if current_date.weekday() == date: # If reminder is on same day and hasn't happened yet
                 next_timestamp = int(current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6])).timestamp())
             else: # If reminder is on another day in the future
                 n = (date - current_date.weekday()) % 7 # mod-7 ensures we don't go backward in time
-                next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+timedelta(days=n)).timestamp())
+                next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=n)).timestamp())
         elif current_time > time_datetime_time: # If reminder happens before current time
             if current_date.weekday() == date: # If reminder is on that day
-                next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+timedelta(days=7)).timestamp()) # Next week
+                next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=7)).timestamp()) # Next week
             else:
                 n = (date - current_date.weekday()) % 7 # mod-7 ensures we don't go backward in time
-                next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+timedelta(days=n)).timestamp())
+                next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=n)).timestamp())
     description = f"> ID: `{id}`\n> Target: {target.mention}\n> Repeat every: `{date_str}`\n> Time: `{time_nums[:2]}:{time_nums[2:4]}{(':'+time_nums[4:6]) if time_nums[4:6] != '00' else ''}`\n> Todo: `{todo}`"
     fields = [
         ("Next reminder",f"<t:{next_timestamp}:D> (:clock1: <t:{next_timestamp}:R>)",False)

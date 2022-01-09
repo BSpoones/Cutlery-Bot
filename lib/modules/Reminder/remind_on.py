@@ -7,7 +7,6 @@ Doccumentation: https://www.bspoones.com/ERL/Reminder#On
 
 
 import tanjun, hikari, re, datetime
-from datetime import datetime, timedelta
 from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import Context as Context
@@ -46,7 +45,7 @@ async def remind_on_command(
             
         else: # If reminder is on another day in the future
             n = (date - current_date.weekday()) % 7 # mod-7 ensures we don't go backward in time
-            date_datetime = current_date + timedelta(days=n)
+            date_datetime = current_date + datetime.timedelta(days=n)
             date = date_datetime.strftime("%Y%m%d")
     else: # DDMM or YYYYMMDD validation
         date_nums = re.sub("[^0-9]","",date)
