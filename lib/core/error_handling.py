@@ -19,4 +19,4 @@ async def on_error(ctx: tanjun.SlashContext, exc: Exception):
     try:
         await ctx.create_initial_response(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
     except:
-        await ctx.edit_initial_response(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.edit_initial_response(embed=embed)
