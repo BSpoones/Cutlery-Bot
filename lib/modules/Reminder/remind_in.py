@@ -78,7 +78,7 @@ async def remind_in_command(
 
     description = f"> ID: `{id}`\n> Target: {target.mention}\n> Todo: `{todo}`"
     fields = [
-        ("Reminder will send at:",f"<t:{next_timestamp}:D> (:clock1: <t:{next_timestamp}:R>)",False)
+        ("Reminder will send on:",f"<t:{next_timestamp}:D> (:clock1: <t:{next_timestamp}:R>)",False)
     ]
     embed = Bot.auto_embed(
         type="info",
