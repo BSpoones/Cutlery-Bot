@@ -155,12 +155,13 @@ class Bot(hikari.GatewayBot):
         ctx: Context = args[0]
         command = args[1]
         try:
-            cmd_args = " ".join(args[2:])
-        except:
+            cmd_args = " | ".join(args[2:])
+        except Exception as e:
+            logging.error(f"ISSUE WITH LOG_COMMAND: {e}")
             cmd_args = None
         author = str(ctx.author.id)
         guild = str(ctx.guild_id)
         channel = str(ctx.channel_id)
-        db.execute("INSERT INTO `CommandLogs`(`UserID`,`GuildID`,`ChannelID`,`Command`,`Args`) VALUES (?,?,?,?,?)", author,guild,channel,command, cmd_args)
+        db.execute("INSERT INTO `CommandLogs`(`UserID`,`GuildID`,`ChannelID`,`Command`,`Args`) VALUES (%s,%s,%s,%s,%s)", author,guild,channel,command, cmd_args)
         db.commit()
 bot = Bot()
