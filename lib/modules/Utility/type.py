@@ -23,7 +23,7 @@ async def type_command(ctx: Context, message: str, private: bool):
         await ctx.get_channel().send(message)
     else:
         await ctx.respond(message)
-    Bot.log_command(ctx,"type",message,private)
+    Bot.log_command(ctx,"type",str(message),str(private))
 
 @tanjun.as_loader
 def load_components(client: Client):
