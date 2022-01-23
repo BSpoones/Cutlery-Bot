@@ -56,7 +56,26 @@ class Bot(hikari.GatewayBot):
     @classmethod
     def auto_embed(self,**kwargs):
         """
-        Embed creator for commands
+        Creates an embed from kwargs, keeping the same pattern.
+        
+        Parameters
+        ----------
+        `type`: The type of reminder
+        `author`: Author of command, used for cog name in ERL
+        `author_url`: URL of author, used for webstie in ERL
+        `title`: Embed title
+        `url`: URL for the embed, will appear as clickable on the title
+        `description`: Embed description
+        `fields`: 3 item tuple for fields (name,value,inline)
+        
+        `remindertext`: REMINDER TYPE ONLY - Text to be shown on the footer on a reminder
+        `member`: REMINDER TYPE ONLY - User to be set for footer
+        `emoji_url`: EMOJI TYPE ONLY - Sets image for embed
+        `schoolname`: LESSON TYPE ONLY - Sets footer to be the schoolname
+        
+        Returns
+        -------
+        hikari.Embed
         """
         if "type" not in kwargs:
             embed_type = "default"
