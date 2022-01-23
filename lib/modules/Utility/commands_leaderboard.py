@@ -5,15 +5,14 @@ Solely for use in the ERL discord bot
 Doccumentation: https://www.bspoones.com/ERL/Utility#CommandLeaderboard
 """
 
-import asyncio
-import hikari
+import hikari, tanjun, math
 from hikari.embeds import Embed
 from hikari.events.interaction_events import InteractionCreateEvent
 from hikari.interactions.base_interactions import ResponseType
 from hikari.messages import ButtonStyle
-import tanjun, math
 from lib.core.bot import Bot
 from lib.core.client import Client
+from lib.utils.buttons import DELETE_ROW, EMPTY_ROW, PAGENATE_ROW
 from tanjun.abc import Context as Context
 from collections import Counter
 from ...db import db
@@ -66,7 +65,7 @@ async def command_leaderboard_command(
     if amount is None:
         amount = 10
     elif amount >PAGE_LIMIT:
-        raise ValueError(f"You cannot have more than {PAGE_LIMIT} items per page.")
+        raise ValueError(f"You cannot have more than `{PAGE_LIMIT}` items per page.\nYou entered `{amount}` items")
     last_page = math.ceil(len(a)/amount) 
     
     if page > last_page:
@@ -76,39 +75,8 @@ async def command_leaderboard_command(
             raise ValueError(f"You have selected a page number that doesn't exist `{page}`. Please pick any page from `1-{last_page}`.")
     
     embed = build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page)
-    row = ctx.rest.build_action_row()
-    (
-        row.add_button(ButtonStyle.PRIMARY, "⏮")
-        .set_emoji("⏮")
-        .add_to_container()
-    )
-    (
-        row.add_button(ButtonStyle.PRIMARY, "◀")
-        .set_emoji("◀")
-        .add_to_container()
-    )
-    (
-        row.add_button(ButtonStyle.DANGER, "❌")
-        .set_emoji("❌")
-        .add_to_container()
-    )
-    (
-        row.add_button(ButtonStyle.PRIMARY, "▶")
-        .set_emoji("▶")
-        .add_to_container()
-    )
-    (
-        row.add_button(ButtonStyle.PRIMARY, "⏭")
-        .set_emoji("⏭")
-        .add_to_container()
-    )
-    empty_row = ctx.rest.build_action_row()
-    (
-        empty_row.add_button(ButtonStyle.SECONDARY,"Expired")
-        .set_label("Buttons expired, run command again to view")
-        .add_to_container()
-    )
-    await ctx.respond(embed=embed, components=[row,])
+    
+    await ctx.respond(embed=embed, components=[PAGENATE_ROW,])
     Bot.log_command(ctx,"commandleaderboard")
     try:
         with bot.stream(InteractionCreateEvent, timeout=60).filter(('interaction.user.id', ctx.author.id)) as stream:
@@ -117,23 +85,24 @@ async def command_leaderboard_command(
                     ResponseType.DEFERRED_MESSAGE_UPDATE,
                 )
                 key = event.interaction.custom_id
-                if key == "⏮":
-                    page = 1
-                    await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[row,])
-                if key == "◀":
-                    if page-1 >= 1:
-                        page -= 1
-                        await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[row,])
-                if key == "▶":
-                    if page+1 <= last_page:
-                        page += 1
-                        await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[row,])
-                if key == "⏭":
-                    page = last_page
-                    await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[row,])
-                if key == "❌":
-                    await ctx.delete_initial_response()
-        await ctx.edit_initial_response(components=[])
+                match key:
+                    case "FIRST":
+                        page = 1
+                        await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[PAGENATE_ROW,])
+                    case "BACK":
+                        if page-1 >= 1:
+                            page -= 1
+                            await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[PAGENATE_ROW,])
+                    case "NEXT":
+                        if page+1 <= last_page:
+                            page += 1
+                            await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[PAGENATE_ROW,])
+                    case "LAST":
+                        page = last_page
+                        await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[PAGENATE_ROW,])
+                    case "AUTHOR_DELETE_BUTTON":
+                        await ctx.delete_initial_response()
+        await ctx.edit_initial_response(components=[EMPTY_ROW])
         
     # except exception as c # asyncio.TimeoutError:
     except:
