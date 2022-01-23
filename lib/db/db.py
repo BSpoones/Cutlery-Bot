@@ -21,8 +21,6 @@ cxn = connect(
 
 )
 cur = cxn.cursor(prepared=True)
-
-
 def interact_with_server():
 	"""
 	Prevents database disconnecting from inactivity by sending request to
@@ -38,13 +36,25 @@ db_scheduler = AsyncIOScheduler()
 db_scheduler.add_job(
 	interact_with_server,
 	CronTrigger(
-		second=0
+		minute=0
+	)
+)
+db_scheduler.add_job(
+	interact_with_server,
+	CronTrigger(
+		minute=30
 	)
 )
 db_scheduler.start()
 
 def reload():
     global cxn, cur
+    try:
+        cur.close()
+        cxn.close()
+    except:
+        logging.error("THIS FAILED")
+        pass
     cxn = connect(
             host=host,
             user=user,
