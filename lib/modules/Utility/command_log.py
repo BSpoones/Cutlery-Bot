@@ -15,7 +15,7 @@ from lib.utils.buttons import EMPTY_ROW, PAGENATE_ROW
 from ...db import db
 from . import COG_TYPE, COG_LINK
 
-PAGE_LIMIT = 15
+PAGE_LIMIT = 10
 
 
 def build_page(ctx: Context, page, amount, serveronly, bot:hikari.GatewayBot) -> Embed:
@@ -26,17 +26,21 @@ def build_page(ctx: Context, page, amount, serveronly, bot:hikari.GatewayBot) ->
         commands_lst = db.records("SELECT * FROM CommandLogs ORDER BY CommandLogID DESC LIMIT ?,?",offset,amount) # Offset first, limit second
     
     longest_command_id_length = len(str(commands_lst[0][0])) # Gets length of first item from db query, the highest number in the list    
+    longest_command_name_length = len(max(list(map(lambda x: x[4],commands_lst)),key=len))
     table_length = db.count("SELECT COUNT(CommandLogID) FROM CommandLogs")
     last_page = math.ceil(table_length/amount) 
-    
-    message = ""
+    new_date: datetime.datetime = commands_lst[0][6].date() # First grouping element
+    message = f"**{new_date}**"
     for command in commands_lst:
         command_id = command[0]
         user_id = command[1]
         command_name = command[4]
         time_sent: datetime.datetime = command[6]
-        timestamp = int(time_sent.timestamp())
-        message += f"\n `{command_id:>{longest_command_id_length}} > /{command_name:<18}` <@{user_id}> <t:{timestamp}:d>"
+        time_sent_date = time_sent.date()
+        if time_sent_date != new_date:
+            message += f"\n**{time_sent_date}**"
+            new_date = time_sent_date
+        message += f"\n `{command_id:>{longest_command_id_length}} > /{command_name:<{longest_command_name_length}}` <@{user_id}>"
         
     embed = Bot.auto_embed(
         type="info",
