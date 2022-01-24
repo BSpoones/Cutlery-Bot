@@ -36,13 +36,7 @@ db_scheduler = AsyncIOScheduler()
 db_scheduler.add_job(
 	interact_with_server,
 	CronTrigger(
-		minute=0
-	)
-)
-db_scheduler.add_job(
-	interact_with_server,
-	CronTrigger(
-		minute=30
+		second=0
 	)
 )
 db_scheduler.start()
