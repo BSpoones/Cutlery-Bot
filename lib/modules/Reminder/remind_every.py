@@ -98,6 +98,12 @@ async def remind_every_command(
             else:
                 n = (date - current_date.weekday()) % 7 # mod-7 ensures we don't go backward in time
                 next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=n)).timestamp())
+    elif date_type == "DDMM":
+        target_date = datetime.date(year=datetime.datetime.today().year,month=int(date[2:4]),day=int(date[:2]))
+        if current_date.date() > target_date:
+            next_timestamp = int(datetime.datetime(year=current_date.year+1,month=int(date[2:4]), day=int(date[:2]) ,hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6])).timestamp())
+        else:
+            next_timestamp = int(datetime.datetime(year=current_date.year,month=int(date[2:4]), day=int(date[:2]) ,hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6])).timestamp())
     description = f"> ID: `{id}`\n> Target: {target.mention}\n> Repeat every: `{date_str}`\n> Time: `{time_nums[:2]}:{time_nums[2:4]}{(':'+time_nums[4:6]) if time_nums[4:6] != '00' else ''}`\n> Todo: `{todo}`"
     fields = [
         ("Next reminder",f"<t:{next_timestamp}:D> (:clock1: <t:{next_timestamp}:R>)",False)
