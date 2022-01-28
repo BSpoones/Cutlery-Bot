@@ -11,7 +11,7 @@ import tanjun, hikari, datetime
 from lib.core.bot import bot, Bot
 from lib.core.client import Client
 from ...db import db
-from . import COG_TYPE, COG_LINK
+from . import COG_TYPE, COG_LINK, DAYS_OF_WEEK
 NL = "\n" # Python doesn't allow backslases in f strings
 
 class Reminder():
@@ -29,7 +29,7 @@ class Reminder():
     
     def load_reminders(self):
         """
-        Loads all reminder information from reminder
+        Loads / reloads all reminder information from reminder
         table in databse. Iterates through all future
         reminders and adds them as APscheduler tasks
         """
@@ -272,7 +272,7 @@ class Reminder():
             elif (current_time > reminder_datetime_time) and (current_date >= target_date): # If current time is after the reminder time, and the date is after or on the same day as the reminder date
                 next_reminder_datetime = datetime.datetime(year=current_date.year+1,month=int(date[2:4]), day=int(date[:2]) ,hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))
         return next_reminder_datetime
-                    
+    
     def format_reminder_into_string(self,reminder):
         """
         Formats a reminder in order to be displayed in an embed
