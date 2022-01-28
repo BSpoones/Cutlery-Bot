@@ -45,3 +45,15 @@ PAGENATE_ROW = (
     .add_to_container()
 
 )
+
+UNDO_ROW = (
+    hikari.impl.ActionRowBuilder()
+    .add_button(ButtonStyle.PRIMARY, "UNDO")
+    .set_emoji("↩")
+    .set_label("Undo command")
+    .add_to_container()
+    
+    .add_button(ButtonStyle.DANGER, DELETE_CUSTOM_ID)
+    .set_emoji("❌")
+    .add_to_container()
+)
