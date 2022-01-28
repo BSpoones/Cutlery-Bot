@@ -21,9 +21,9 @@ PAGE_LIMIT = 10
 def build_page(ctx: Context, page, amount, serveronly, bot:hikari.GatewayBot) -> Embed:
     offset = amount * (page-1)
     if serveronly:
-        commands_lst = db.records("SELECT * FROM CommandLogs WHERE GuildID = ? ORDER BY CommandLogID DESC LIMIT ?,?",ctx.guild_id,offset,amount) # Offset first, limit second
+        commands_lst = db.records("SELECT * FROM CommandLogs WHERE GuildID = %s ORDER BY CommandLogID DESC LIMIT %s,%s",ctx.guild_id,offset,amount) # Offset first, limit second
     if not serveronly:
-        commands_lst = db.records("SELECT * FROM CommandLogs ORDER BY CommandLogID DESC LIMIT ?,?",offset,amount) # Offset first, limit second
+        commands_lst = db.records("SELECT * FROM CommandLogs ORDER BY CommandLogID DESC LIMIT %s,%s",offset,amount) # Offset first, limit second
     
     longest_command_id_length = len(str(commands_lst[0][0])) # Gets length of first item from db query, the highest number in the list    
     longest_command_name_length = len(max(list(map(lambda x: x[4],commands_lst)),key=len))
