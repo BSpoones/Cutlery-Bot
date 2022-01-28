@@ -28,7 +28,7 @@ def interact_with_server():
 	"""
 	try:
 		records("SHOW DATABASES")
-	except OperationalError: # For when ERL loses connection to db
+	except: # For when ERL loses connection to db
 		reload()
 		logging.error("Connection to database lost.")
 
