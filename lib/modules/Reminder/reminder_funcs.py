@@ -219,6 +219,59 @@ class Reminder():
                         embed = await self.create_reminder_output(reminder) 
                         db.execute("DELETE FROM Reminders WHERE ReminderID = ?",reminder_id)
                         await self.bot.rest.create_message(channel_id,f"<@{target_id}>",embed=embed,user_mentions=True)
+    def calculate_next_reminder(self,reminder) -> datetime.datetime:
+        """
+        Calculates a datetime object of the next reminder if repeating
+        
+        Arguments
+        ---------
+        reminder: Full reminder tuple as retrieved from a database (12 item tuple)
+        
+        Returns
+        ------
+        Datetime object of the next scheduled reminder for a reapeting reminder type
+        """
+        reminder_type = reminder[5]
+        if reminder_type != "R":
+            raise ValueError("The reminder selected is not a repeating reminder.")
+        date_type = reminder[6]
+        date = reminder[7]
+        time = reminder[8]
+        current_datetime = datetime.datetime.today()
+        current_date = current_datetime.date()
+        current_time = current_datetime.time()
+        reminder_datetime_time = datetime.datetime.strptime(time,"%H%M%S").time()
+        
+        if date_type == "day":
+            if current_time < reminder_datetime_time: # If current time is before the reminder time
+                next_reminder_datetime = current_datetime.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))
+            elif current_time > reminder_datetime_time:
+                next_reminder_datetime = current_datetime.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=1)
+        elif date_type == "weekday":
+            if current_time < reminder_datetime_time: # If current time is before the reminder time
+                if current_date.weekday() == date: # If reminder is on same day and hasn't happened yet
+                    next_reminder_datetime = current_datetime.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))
+                else: # If reminder is on another day in the future
+                    n = (date - current_date.weekday()) % 7 # mod 7 ensures we don't go backward in time
+                    next_reminder_datetime = (current_datetime.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=n))
+            elif current_time > reminder_datetime_time: # If reminder happens before current time
+                if current_date.weekday() == date: # If reminder is on that day
+                    next_reminder_datetime = (current_datetime.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=7)) # Next week
+                else:
+                    n = (date - current_date.weekday()) % 7 # mod-7 ensures we don't go backward in time
+                    next_reminder_datetime = (current_datetime.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=n))
+        elif date_type == "DDMM":
+            # Not my proudest work but it gets the job done hopefully, will fix at some point if causes issues
+            target_date = datetime.date(year=current_date.year,month=int(date[2:4]),day=int(date[:2])) # Date of reminder, set in the same year as the current_date
+            if (current_time < reminder_datetime_time) and (current_date == target_date or current_date < target_date): # If current time is before the reminder time and is on the same or future day
+                next_reminder_datetime = datetime.datetime(year=current_date.year,month=int(date[2:4]), day=int(date[:2]) ,hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))
+            elif (current_time > reminder_datetime_time) and (current_date < target_date):
+                next_reminder_datetime = datetime.datetime(year=current_date.year,month=int(date[2:4]), day=int(date[:2]) ,hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))
+            elif (current_time < reminder_datetime_time) and (current_date >= target_date):
+                next_reminder_datetime = datetime.datetime(year=current_date.year+1,month=int(date[2:4]), day=int(date[:2]) ,hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))
+            elif (current_time > reminder_datetime_time) and (current_date >= target_date): # If current time is after the reminder time, and the date is after or on the same day as the reminder date
+                next_reminder_datetime = datetime.datetime(year=current_date.year+1,month=int(date[2:4]), day=int(date[:2]) ,hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))
+        return next_reminder_datetime
                     
                 
             
