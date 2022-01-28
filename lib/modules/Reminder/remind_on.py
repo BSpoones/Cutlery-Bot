@@ -10,6 +10,7 @@ import tanjun, hikari, re, datetime
 from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import Context as Context
+from tanjun import SlashContext as SlashContext
 from . import COG_TYPE, COG_LINK, DAYS_OF_WEEK, ERL_REMINDER
 from ...db import db
 
@@ -24,7 +25,7 @@ remind_on_component = tanjun.Component()
 @tanjun.with_bool_slash_option("private","Do you want this reminder to be in a private DM?", default=False)
 @tanjun.as_slash_command("remindon","Send a reminder on a specific date")
 async def remind_on_command(
-    ctx: Context, 
+    ctx: SlashContext, 
     target: hikari.Member,
     date: str,
     time: str,
@@ -104,6 +105,7 @@ async def remind_on_command(
         "INSERT INTO Reminders(CreatorID,TargetID,GroupID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?)",
         creator_id,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private
         )
+    db.commit()
     id = (db.lastrowid())
     current_date = datetime.datetime.today()
     description = f"> ID: `{id}`\n> Target: {target.mention}\n> Todo: `{todo}`"
@@ -120,9 +122,9 @@ async def remind_on_command(
         ctx = ctx
     )
     if private:
-        await ctx.respond(embed=embed, flags= hikari.MessageFlag.EPHEMERAL)
+        await ctx.create_initial_response(embed=embed, flags= hikari.MessageFlag.EPHEMERAL)
     else:
-        await ctx.respond(embed=embed)
+        await ctx.create_initial_response(embed=embed)
     ERL_REMINDER.load_reminders()
     Bot.log_command(ctx,"remindon",str((creator_id,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private)))
 

@@ -24,7 +24,7 @@ remind_every_component = tanjun.Component()
 @tanjun.with_bool_slash_option("private","Do you want this reminder to be in a private DM?", default=False)
 @tanjun.as_slash_command("remindevery","Send a repeating reminder")
 async def remind_every_command(
-    ctx: Context, 
+    ctx: tanjun.SlashContext, 
     target: hikari.Member,
     date: str,
     time: str,
@@ -75,35 +75,10 @@ async def remind_every_command(
         "INSERT INTO Reminders(CreatorID,TargetID,GroupID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?)",
         creator_id,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private
         )
+    db.commit()
     id = (db.lastrowid())
-    current_date = datetime.datetime.today()
-    current_time = datetime.datetime.now().time()
-    
-    time_datetime_time = datetime.datetime.strptime(time,"%H%M%S").time()
-    if date_type == "day":
-        if current_time < time_datetime_time: # If current time is before the reminder time
-            next_timestamp = int(current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6])).timestamp())
-        elif current_time > time_datetime_time:
-            next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=1)).timestamp())
-    elif date_type == "weekday":
-        if current_time < time_datetime_time:
-            if current_date.weekday() == date: # If reminder is on same day and hasn't happened yet
-                next_timestamp = int(current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6])).timestamp())
-            else: # If reminder is on another day in the future
-                n = (date - current_date.weekday()) % 7 # mod-7 ensures we don't go backward in time
-                next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=n)).timestamp())
-        elif current_time > time_datetime_time: # If reminder happens before current time
-            if current_date.weekday() == date: # If reminder is on that day
-                next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=7)).timestamp()) # Next week
-            else:
-                n = (date - current_date.weekday()) % 7 # mod-7 ensures we don't go backward in time
-                next_timestamp = int((current_date.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=n)).timestamp())
-    elif date_type == "DDMM":
-        target_date = datetime.date(year=datetime.datetime.today().year,month=int(date[2:4]),day=int(date[:2]))
-        if current_date.date() > target_date:
-            next_timestamp = int(datetime.datetime(year=current_date.year+1,month=int(date[2:4]), day=int(date[:2]) ,hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6])).timestamp())
-        else:
-            next_timestamp = int(datetime.datetime(year=current_date.year,month=int(date[2:4]), day=int(date[:2]) ,hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6])).timestamp())
+    next_datetime = ERL_REMINDER.calculate_next_reminder((id,creator_id,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private))
+    next_timestamp = int(next_datetime.timestamp())
     description = f"> ID: `{id}`\n> Target: {target.mention}\n> Repeat every: `{date_str}`\n> Time: `{time_nums[:2]}:{time_nums[2:4]}{(':'+time_nums[4:6]) if time_nums[4:6] != '00' else ''}`\n> Todo: `{todo}`"
     fields = [
         ("Next reminder",f"<t:{next_timestamp}:D> (:clock1: <t:{next_timestamp}:R>)",False)
@@ -118,9 +93,9 @@ async def remind_every_command(
         ctx = ctx
     )
     if private:
-        await ctx.respond(embed=embed, flags= hikari.MessageFlag.EPHEMERAL)
+        await ctx.create_initial_response(embed=embed, flags= hikari.MessageFlag.EPHEMERAL)
     else:
-        await ctx.respond(embed=embed)
+        await ctx.create_initial_response(embed=embed)
     ERL_REMINDER.load_reminders()
     Bot.log_command(ctx,"remindevery",str((creator_id,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private)))
 
