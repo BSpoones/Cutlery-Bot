@@ -273,8 +273,49 @@ class Reminder():
                 next_reminder_datetime = datetime.datetime(year=current_date.year+1,month=int(date[2:4]), day=int(date[:2]) ,hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))
         return next_reminder_datetime
                     
-                
-            
+    def format_reminder_into_string(self,reminder):
+        """
+        Formats a reminder in order to be displayed in an embed
+        Returns a description and fields containing the neccesary information
+        
+        """
+        reminder_id = reminder[0]
+        creator_id = reminder[1]
+        target_id = reminder[2]
+        reminder_type = reminder[5]
+        date_type = reminder[6]
+        date = reminder[7]
+        time = reminder[8]
+        todo = reminder[9]
+        timesent: datetime.datetime = reminder[11]
+        timesent_timestamp = int(timesent.timestamp())
+        if creator_id == target_id:
+            target_str = f"Target: <@{target_id}>"
+        else:
+            target_str = f"Creator: <@{creator_id}>\n> Target: <@{target_id}>"
+        if reminder_type == "S": # Always YYYYMMDD HHMMSS format
+            reminder_datetime = datetime.datetime.strptime((date+time),"%Y%m%d%H%M%S")
+            reminder_timestamp = int(reminder_datetime.timestamp())
+            description = f"> ID: `{reminder_id}`\n> {target_str}\n> Todo: `{todo}`\n> Created at: <t:{timesent_timestamp}:D>\n> Remind at: <t:{reminder_timestamp}:D>"
+            fields = []
+        elif reminder_type == "R":
+            match date_type:
+                case "day":
+                    date_str = "Repeating every: `day`"
+                case "weekday":
+                    weekday = DAYS_OF_WEEK[int(date)]
+                    date_str = f"Repeat every: `{weekday.capitalize()}`"
+                case "DDMM":
+                    date_str = f"Repeat every: `{date[:2]}/{date[2:4]}`"
+            # Calculating next occourance
+            next_datetime = self.calculate_next_reminder(reminder)
+            next_timestamp = int(next_datetime.timestamp())
+            description = f"> ID: `{reminder_id}`\n> {target_str}\n> {date_str}\n> Time: `{time[:2]}:{time[2:4]}{(':'+time[4:6]) if time[4:6] != '00' else ''}`\n> Todo: `{todo}`\n> Created at: <t:{timesent_timestamp}:D"
+            fields = [
+                ("Next reminder would have been:",f"<t:{next_timestamp}:D> (:clock1: <t:{next_timestamp}:R>)",False)
+            ]
+        return (description,fields)
+
 
 
 @tanjun.as_loader
