@@ -38,7 +38,6 @@ async def remind_on_command(
     short_date = date[:2].lower()
     current_date = datetime.datetime.today()
     if (any(t.startswith(short_date) for t in DAYS_OF_WEEK)): # Day of week validation
-        date_type = "weekday"
         date = list(map(lambda x: x[:2],DAYS_OF_WEEK)).index(short_date) # Turns weekday to 0-6 day index
         if current_date.weekday() == date: # If reminder is on same day and hasn't happened yet
             date_datetime = current_date
@@ -61,14 +60,12 @@ async def remind_on_command(
                     date_datetime = DDMM_datetime.replace(year=current_year+1)
                 else: 
                     date_datetime = DDMM_datetime
-                date_type = "DDMM"
                 date = date_datetime.strftime("%Y%m%d")
             except:
                 raise ValueError("Please enter a valid date")
         elif len(date_nums) == 8: # YYYYMMDD
             try:
                 date_datetime = datetime.datetime.strptime(date_nums,"%Y%m%d")
-                date_type = "YYYYMMDD"
                 date = date_nums
             except:
                 raise ValueError("Please enter a valid date")
@@ -101,6 +98,7 @@ async def remind_on_command(
     group_id = ctx.guild_id
     channel_id = ctx.channel_id
     reminder_type = "S"
+    date_type = "YYYYMMDD"
     db.execute(
         "INSERT INTO Reminders(CreatorID,TargetID,GroupID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?)",
         creator_id,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private
