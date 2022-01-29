@@ -203,7 +203,6 @@ class Reminder():
                 reminder_id = reminder[0]
                 date = reminder[7]
                 time = reminder[8]
-
                 reminder_datetime = datetime.datetime.strptime(f"{date}{time}","%Y%m%d%H%M%S")
                 if reminder_datetime < current_date:
                     private = reminder[10]
@@ -212,12 +211,14 @@ class Reminder():
                     group_id = reminder[3]
                     embed = await self.create_reminder_output(reminder) 
                     db.execute("DELETE FROM Reminders WHERE ReminderID = ?",reminder_id)
+                    db.commit()
                     if private:
                         user = await self.bot.rest.fetch_member(group_id,target_id)
                         await user.send(embed=embed)
                     else:
                         embed = await self.create_reminder_output(reminder) 
                         db.execute("DELETE FROM Reminders WHERE ReminderID = ?",reminder_id)
+                        db.commit()
                         await self.bot.rest.create_message(channel_id,f"<@{target_id}>",embed=embed,user_mentions=True)
     def calculate_next_reminder(self,reminder) -> datetime.datetime:
         """
@@ -252,13 +253,13 @@ class Reminder():
                 if current_date.weekday() == date: # If reminder is on same day and hasn't happened yet
                     next_reminder_datetime = current_datetime.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))
                 else: # If reminder is on another day in the future
-                    n = (date - current_date.weekday()) % 7 # mod 7 ensures we don't go backward in time
+                    n = (int(date) - current_date.weekday()) % 7 # mod 7 ensures we don't go backward in time
                     next_reminder_datetime = (current_datetime.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=n))
             elif current_time > reminder_datetime_time: # If reminder happens before current time
                 if current_date.weekday() == date: # If reminder is on that day
                     next_reminder_datetime = (current_datetime.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=7)) # Next week
                 else:
-                    n = (date - current_date.weekday()) % 7 # mod-7 ensures we don't go backward in time
+                    n = (int(date) - current_date.weekday()) % 7 # mod-7 ensures we don't go backward in time
                     next_reminder_datetime = (current_datetime.replace(hour=int(time[:2]),minute=int(time[2:4]),second=int(time[4:6]))+datetime.timedelta(days=n))
         elif date_type == "DDMM":
             # Not my proudest work but it gets the job done hopefully, will fix at some point if causes issues
@@ -310,7 +311,7 @@ class Reminder():
             # Calculating next occourance
             next_datetime = self.calculate_next_reminder(reminder)
             next_timestamp = int(next_datetime.timestamp())
-            description = f"> ID: `{reminder_id}`\n> {target_str}\n> {date_str}\n> Time: `{time[:2]}:{time[2:4]}{(':'+time[4:6]) if time[4:6] != '00' else ''}`\n> Todo: `{todo}`\n> Created at: <t:{timesent_timestamp}:D"
+            description = f"> ID: `{reminder_id}`\n> {target_str}\n> {date_str}\n> Time: `{time[:2]}:{time[2:4]}{(':'+time[4:6]) if time[4:6] != '00' else ''}`\n> Todo: `{todo}`\n> Created on: <t:{timesent_timestamp}:D>"
             fields = [
                 ("Next reminder would have been:",f"<t:{next_timestamp}:D> (:clock1: <t:{next_timestamp}:R>)",False)
             ]
