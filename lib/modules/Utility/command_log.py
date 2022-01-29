@@ -21,7 +21,7 @@ PAGE_LIMIT = 10
 def build_page(ctx: Context, page, amount, serveronly, bot:hikari.GatewayBot) -> Embed:
     offset = amount * (page-1)
     if serveronly:
-        commands_lst = db.records("SELECT * FROM CommandLogs WHERE GuildID = %s ORDER BY CommandLogID DESC LIMIT %s,%s",ctx.guild_id,offset,amount) # Offset first, limit second
+        commands_lst = db.records("SELECT * FROM CommandLogs WHERE GuildID = %s ORDER BY CommandLogID DESC LIMIT %s,%s",str(ctx.guild_id),offset,amount) # Offset first, limit second
     if not serveronly:
         commands_lst = db.records("SELECT * FROM CommandLogs ORDER BY CommandLogID DESC LIMIT %s,%s",offset,amount) # Offset first, limit second
     
@@ -73,11 +73,11 @@ async def command_logs_command(
     table_length = db.count("SELECT COUNT(CommandLogID) FROM CommandLogs")
     last_page = math.ceil(table_length/amount) 
     embed = build_page(ctx,page,amount,serveronly, bot)
-    await ctx.respond(embed=embed, components=[PAGENATE_ROW,])
+    message = await ctx.respond(embed=embed, components=[PAGENATE_ROW,],ensure_result=True)
     Bot.log_command(ctx,"commandlogs")
 
     try:
-        with bot.stream(InteractionCreateEvent, timeout=60).filter(('interaction.user.id', ctx.author.id)) as stream:
+        with bot.stream(InteractionCreateEvent, timeout=60).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
             async for event in stream:
                 await event.interaction.create_initial_response(
                     ResponseType.DEFERRED_MESSAGE_UPDATE,
@@ -101,8 +101,7 @@ async def command_logs_command(
                     case "AUTHOR_DELETE_BUTTON":
                         await ctx.delete_initial_response()
         await ctx.edit_initial_response(components=[EMPTY_ROW])
-        
-    # except exception as c # asyncio.TimeoutError:
+
     except:
         pass
 

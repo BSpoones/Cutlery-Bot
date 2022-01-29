@@ -77,10 +77,10 @@ async def command_leaderboard_command(
     
     embed = build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page)
     
-    await ctx.respond(embed=embed, components=[PAGENATE_ROW,])
+    message = await ctx.respond(embed=embed, components=[PAGENATE_ROW,],ensure_result=True)
     Bot.log_command(ctx,"commandleaderboard")
     try:
-        with bot.stream(InteractionCreateEvent, timeout=60).filter(('interaction.user.id', ctx.author.id)) as stream:
+        with bot.stream(InteractionCreateEvent, timeout=60).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
             async for event in stream:
                 await event.interaction.create_initial_response(
                     ResponseType.DEFERRED_MESSAGE_UPDATE,

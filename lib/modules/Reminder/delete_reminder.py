@@ -54,21 +54,22 @@ async def delete_reminder_command(ctx: tanjun.SlashContext, id:int, bot: hikari.
     # Will send to target and creator if target != creator
     if target_id != creator_id and ctx.author.id == target_id:
         if private:
-            await ctx.create_initial_response(embed=embed,flags=hikari.MessageFlag.EPHEMERAL,components=[UNDO_ROW])
+            message = await ctx.create_initial_response(embed=embed,flags=hikari.MessageFlag.EPHEMERAL,components=[UNDO_ROW])
         else:
-            await ctx.create_initial_response(embed=embed,components=[UNDO_ROW])
+            message = await ctx.create_initial_response(embed=embed,components=[UNDO_ROW])
         creator_user = await ctx.rest.fetch_user(creator_id)
         # Not giving creator option to undo deletion for a target to avoid abuse
         await creator_user.send(f"<@{target_id}> has deleted the following reminder.",embed=embed)
     else:
         if private:
-            await ctx.create_initial_response(embed=embed,flags=hikari.MessageFlag.EPHEMERAL,components=[UNDO_ROW])
+            message = await ctx.create_initial_response(embed=embed,flags=hikari.MessageFlag.EPHEMERAL,components=[UNDO_ROW])
         else:
-            await ctx.create_initial_response(embed=embed,components=[UNDO_ROW])
+            message = await ctx.create_initial_response(embed=embed,components=[UNDO_ROW])
+    message = await ctx.fetch_initial_response()
     Bot.log_command(ctx,"deletereminder")
     # Gives option to restore deleted reminder for up to 60 seconds
     try:
-        with bot.stream(InteractionCreateEvent, timeout=60).filter(('interaction.user.id', ctx.author.id)) as stream:
+        with bot.stream(InteractionCreateEvent, timeout=60).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
             async for event in stream:
                 await event.interaction.create_initial_response(
                     ResponseType.DEFERRED_MESSAGE_UPDATE,
@@ -88,6 +89,7 @@ async def delete_reminder_command(ctx: tanjun.SlashContext, id:int, bot: hikari.
                         formatted_reminder = ERL_REMINDER.format_reminder_into_string(new_reminder)
                         description = formatted_reminder[0]
                         fields = formatted_reminder[1]
+                        fields = [(f"**Next reminder will be**",fields[0][1],False)]
                         embed = Bot.auto_embed(
                             type="info",
                             author=f"{COG_TYPE}",
