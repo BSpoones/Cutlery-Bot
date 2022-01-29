@@ -1,11 +1,11 @@
 """
 Reminder module
-Developed by Bspoones - Dec 2021
+Developed by Bspoones - Dec 2021 - Jan 2022
 Solely for use in the ERL discord bot
 Doccumentation: https://www.bspoones.com/ERL/Reminder
 """
 
-
+__version__ = "1.0"
 
 COG_TYPE = "Reminder"
 COG_LINK = "http://www.bspoones.com/ERL/Reminder"
