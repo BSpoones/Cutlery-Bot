@@ -31,8 +31,7 @@ async def delete_reminder_command(ctx: tanjun.SlashContext, id:int, bot: hikari.
     creator_id = reminder[1]
     target_id = reminder[2]
     private = reminder[10]
-    if str(ctx.author.id) not in (str(creator_id),str(target_id),*OWNER_IDS):
-        print(ctx.author.id, creator_id)
+    if int(ctx.author.id) not in (int(creator_id),int(target_id),*OWNER_IDS):
         raise ValueError("You are not the creator or the target of this reminder. You can not delete this reminder")
     # Formatting output message
     formatted_reminder = ERL_REMINDER.format_reminder_into_string(reminder)
