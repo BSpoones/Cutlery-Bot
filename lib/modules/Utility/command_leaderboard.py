@@ -24,6 +24,7 @@ def build_leaderboard(ctx: Context, page,amount, sorted_commands_dict: dict, las
     
     message = ""
     page_no = page-1
+    command_count = db.count("SELECT Count(Command) FROM CommandLogs")
     most_popular_command = len(str(list(sorted_commands_dict.values())[0])) # Updating leaderboard value length
     for i,(key,value) in enumerate(list(sorted_commands_dict.items())[page_no*amount:page_no*amount+amount]):
         message += f"\n`{(i+1)+page_no*amount:>3} > {'/'+key:<20} > {value:<{most_popular_command}}`"
@@ -33,7 +34,7 @@ def build_leaderboard(ctx: Context, page,amount, sorted_commands_dict: dict, las
         author=f"{COG_TYPE}",
         author_url = COG_LINK,
         title=f"Command Leaderboard | Page {page} of {last_page}",
-        description = f"Showing the most used commands {message}",
+        description = f"Showing the most used commands\nTotal commands sent: `{command_count:,}`{message}",
         ctx=ctx
     )
     return embed
