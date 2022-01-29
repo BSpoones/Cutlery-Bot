@@ -29,8 +29,8 @@ def interact_with_server():
 	try:
 		records("SHOW DATABASES")
 	except: # For when ERL loses connection to db
+		logging.error("Connection to database lost, reconnecting.....")
 		reload()
-		logging.error("Connection to database lost.")
 
 db_scheduler = AsyncIOScheduler()
 db_scheduler.add_job(
@@ -56,6 +56,7 @@ def reload():
             database=database,
         )
     cur = cxn.cursor()
+    logging.info("Successfully connected to the database")
 
 def lastrowid():
 	return cur.lastrowid
