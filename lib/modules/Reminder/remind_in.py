@@ -33,7 +33,7 @@ async def remind_in_command(
     VALIDATION_PATTERN = "^([0-9]+y)?([0-9]+y)?([0-9]+mo)?([0-9]+w)?([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s?)?$"
     # Input validation
     if not bool(re.match(VALIDATION_PATTERN,when)):
-        raise ValueError("Invalid when.")
+        raise ValueError(f"Invalid time entered `{when}`\nUse any of the following `y,mo,w,d,h,m,s`\nExample: `4h15m10s` = 4 hours 15 mins 10 seconds from now")
     time_pattern = re.compile(MATCH_PATTERN,2)
     match = time_pattern.match(when)
     
