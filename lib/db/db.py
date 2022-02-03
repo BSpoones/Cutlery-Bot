@@ -56,7 +56,7 @@ def reload():
             database=database,
         )
     cur = cxn.cursor()
-    logging.info("Successfully connected to the database")
+    logging.info("Successfully reconnected to the database")
 
 def lastrowid():
 	return cur.lastrowid
