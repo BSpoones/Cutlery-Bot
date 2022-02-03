@@ -22,6 +22,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
     except:
         activity = None
     roles = (await target.fetch_roles())[1:]  # All but @everyone.
+    roles = roles[::-1]
     top_role = target.get_top_role()
     created_at = int(target.created_at.timestamp())
     joined_at = int(target.joined_at.timestamp())
