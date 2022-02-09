@@ -30,11 +30,11 @@ async def server_info_command(ctx: Context):
     if len(statuses_dict) != 4: # Ensures length of 4
         if "online" not in statuses_dict:
             statuses_dict["online"] = 0
-        elif "idle" not in statuses_dict:
+        if "idle" not in statuses_dict:
             statuses_dict["idle"] = 0
-        elif "dnd" not in statuses_dict:
+        if "dnd" not in statuses_dict:
             statuses_dict["dnd"] = 0
-        elif "offline" not in statuses_dict:
+        if  "offline" not in statuses_dict:
             statuses_dict["offline"] = 0
     # Output: {'offline': a, 'online': b, 'idle': c, 'dnd': d} where a,b,c,d are values
 
@@ -48,6 +48,12 @@ async def server_info_command(ctx: Context):
         elif isinstance(channel,hikari.GuildCategory):
             channels.append("category")
     channels_dict = dict(Counter(channels))
+    if "voice" not in channels_dict:
+        channels_dict["voice"] = 0
+    if "text" not in channels_dict:
+        channels_dict["text"] = 0
+    if "category" not in channels_dict:
+        channels_dict["category"] = 0
     banned_members = len(await ctx.rest.fetch_bans(guild)) # Fetch as cache does not store
     created_on = int(guild.created_at.timestamp())
     fields = [
