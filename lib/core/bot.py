@@ -61,8 +61,8 @@ class Bot(hikari.GatewayBot):
         Parameters
         ----------
         `type`: The type of reminder
-        `author`: Author of command, used for cog name in ERL
-        `author_url`: URL of author, used for webstie in ERL
+        `author`: Author of command, used for cog name in Cutlery Bot
+        `author_url`: URL of author, used for webstie in Cutlery Bot
         `title`: Embed title
         `url`: URL for the embed, will appear as clickable on the title
         `description`: Embed description

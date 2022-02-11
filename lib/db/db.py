@@ -28,7 +28,7 @@ def interact_with_server():
 	"""
 	try:
 		records("SHOW DATABASES")
-	except: # For when ERL loses connection to db
+	except: # For when Cutlery Bot loses connection to db
 		logging.error("Connection to database lost, reconnecting.....")
 		reload()
 

@@ -1,8 +1,8 @@
 """
 /remindon command
 Developed by Bspoones - Jan 2021
-Solely for use in the ERL discord bot
-Doccumentation: https://www.bspoones.com/ERL/Reminder#On
+Solely for use in the Cutlery Bot discord bot
+Doccumentation: https://www.bspoones.com/Cutlery-Bot/Reminder#On
 """
 
 
@@ -11,7 +11,7 @@ from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import Context as Context
 from tanjun import SlashContext as SlashContext
-from . import COG_TYPE, COG_LINK, DAYS_OF_WEEK, ERL_REMINDER
+from . import COG_TYPE, COG_LINK, DAYS_OF_WEEK, CB_REMINDER
 from ...db import db
 
 
@@ -123,7 +123,7 @@ async def remind_on_command(
         await ctx.create_initial_response(embed=embed, flags= hikari.MessageFlag.EPHEMERAL)
     else:
         await ctx.create_initial_response(embed=embed)
-    ERL_REMINDER.load_reminders()
+    CB_REMINDER.load_reminders()
     Bot.log_command(ctx,"remindon",str((creator_id,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private)))
 
 @tanjun.as_loader

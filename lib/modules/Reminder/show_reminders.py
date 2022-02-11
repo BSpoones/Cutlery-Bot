@@ -1,8 +1,8 @@
 """
 /showreminders command
 Developed by Bspoones - Jan 2021
-Solely for use in the ERL discord bot
-Doccumentation: https://www.bspoones.com/ERL/Reminder#Show
+Solely for use in the Cutlery Bot discord bot
+Doccumentation: https://www.bspoones.com/Cutlery-Bot/Reminder#Show
 """
 
 import tanjun, hikari, math
@@ -12,7 +12,7 @@ from hikari.interactions.base_interactions import ResponseType
 from lib.core.bot import Bot
 from lib.core.client import Client
 from lib.utils.buttons import PAGENATE_ROW, EMPTY_ROW
-from . import COG_TYPE, COG_LINK, ERL_REMINDER
+from . import COG_TYPE, COG_LINK,CB_REMINDER
 from ...db import db
 
 PAGE_LIMIT = 3
@@ -22,7 +22,7 @@ def build_page(ctx: Context,reminders, page, amount,last_page) -> hikari.Embed:
     end_pos = start_pos + amount
     message = ""
     for reminder in reminders[start_pos:end_pos]:
-        formatted_reminder = ERL_REMINDER.format_reminder_into_string(reminder)
+        formatted_reminder =CB_REMINDER.format_reminder_into_string(reminder)
         description = formatted_reminder[0]
         message += f"\n{description}\n"
     embed = Bot.auto_embed(

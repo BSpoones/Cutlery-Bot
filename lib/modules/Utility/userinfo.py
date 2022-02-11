@@ -1,8 +1,8 @@
 """
 /userinfo command
 Developed by Bspoones - Dec 2021
-Solely for use in the ERL discord bot
-Doccumentation: https://www.bspoones.com/ERL/Utility#Userinfo
+Solely for use in the Cutlery Bot discord bot
+Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility#Userinfo
 """
 import hikari, tanjun
 from lib.core.bot import Bot

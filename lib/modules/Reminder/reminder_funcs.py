@@ -1,8 +1,8 @@
 """
 Reminder funcs class
 Developed by Bspoones - Jan 2022
-Solely for use in the ERL discord bot
-Doccumentation: https://www.bspoones.com/ERL/Reminder
+Solely for use in the Cutlery Bot discord bot
+Doccumentation: https://www.bspoones.com/Cutlery-Bot/Reminder
 """
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger

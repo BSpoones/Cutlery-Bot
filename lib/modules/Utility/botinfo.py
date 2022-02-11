@@ -1,8 +1,8 @@
 """
 /botinfo command
 Developed by Bspoones - Dec 2021
-Solely for use in the ERL discord bot
-Doccumentation: https://www.bspoones.com/ERL/Utility#BotInfo
+Solely for use in the Cutlery Bot discord bot
+Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility#BotInfo
 """
 
 import tanjun, time, os, platform
@@ -23,7 +23,7 @@ from . import COG_TYPE, COG_LINK
 botinfo_component = tanjun.Component()
 
 @botinfo_component.with_slash_command
-@tanjun.as_slash_command("botinfo","View ERL's info")
+@tanjun.as_slash_command("botinfo","View Cutlery Bot's info")
 async def botinfo_command(ctx: Context):
     bot = await ctx.rest.fetch_my_user()
 
@@ -51,7 +51,7 @@ async def botinfo_command(ctx: Context):
 
     fields = [
         ("Owner <a:spoongif:732758190734835775>","<@724351142158401577>",False),
-        ("ERL version",BOT_VERSION, True),
+        ("Cutlery Bot version",BOT_VERSION, True),
         ("Python version",python_version(),True),
         ("Library",f"hikari-py v{hikari_version}",True),
         ("Command handler",f"hikari-tanjun v{tanjun_version}",True),
@@ -84,7 +84,7 @@ async def botinfo_command(ctx: Context):
         type="info",
         author=f"{COG_TYPE}",
         author_url = COG_LINK,
-        title="ERL bot info",
+        title="Cutlery Bot bot info",
         description=f"Total lines of code: `{total_lines:,}`\nTotal commands sent to the bot: `{commands_count:,}`",
         thumbnail=bot.avatar_url,
         fields=fields,
@@ -96,7 +96,7 @@ async def botinfo_command(ctx: Context):
         .add_button(ButtonStyle.LINK, "http://bspoones.com/")
         .set_label("Website")
         .add_to_container()
-        .add_button(ButtonStyle.LINK, "https://github.com/BSpoones/ERL")
+        .add_button(ButtonStyle.LINK, "https://github.com/BSpoones/Cutlery-Bot")
         .set_label("Source")
         .add_to_container()
         .add_button(

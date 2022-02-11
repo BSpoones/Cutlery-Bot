@@ -27,18 +27,18 @@ class EventHandler():
 
 
     async def on_starting(self, event: hikari.StartingEvent):
-        logging.info("Starting ERL bot.....")
+        logging.info("Starting Cutlery Bot.....")
     async def on_started(self, event: hikari.StartedEvent):
-        logging.info(f"ERL bot v{VERSION} Loaded!")
+        logging.info(f"Cutlery bot v{VERSION} Loaded!")
         await self.bot.update_bot_presence()
         
 
         
     async def on_stopping(self, event):
-        logging.info("Stopping ERL bot.....")
+        logging.info("Stopping Cutlery Bot.....")
         
     async def on_stopped(self, event):
-        logging.info("ERL bot Stopped!")
+        logging.info("Cutlery Bot Stopped!")
         
     async def on_guild_join(self, event):
         await self.bot.update_bot_presence()

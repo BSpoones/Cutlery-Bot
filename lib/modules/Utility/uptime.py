@@ -1,8 +1,8 @@
 """
 /uptime command
 Developed by Bspoones - Dec 2021
-Solely for use in the ERL discord bot
-Doccumentation: https://www.bspoones.com/ERL/Utility#Uptime
+Solely for use in the Cutlery Bot discord bot
+Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility#Uptime
 """
 
 import tanjun, time
@@ -24,7 +24,7 @@ async def uptime_command(ctx: Context):
         author=f"{COG_TYPE}",
         author_url = COG_LINK,
         title=":stopwatch: Uptime",
-        description=f"> ERL uptime: `{uptime}`.",
+        description=f"> Cutlery Bot uptime: `{uptime}`.",
         ctx=ctx
     )
     await ctx.respond(embed)

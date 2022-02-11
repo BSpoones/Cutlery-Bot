@@ -1,8 +1,8 @@
 """
 /deletereminder command
 Developed by Bspoones - Jan 2021
-Solely for use in the ERL discord bot
-Doccumentation: https://www.bspoones.com/ERL/Reminder#Delete
+Solely for use in the Cutlery Bot discord bot
+Doccumentation: https://www.bspoones.com/Cutlery-Bot/Reminder#Delete
 """
 
 import tanjun, hikari, logging
@@ -13,7 +13,7 @@ from hikari.interactions.base_interactions import ResponseType
 from lib.core.client import Client
 from lib.utils.buttons import UNDO_ROW
 from data.bot.data import OWNER_IDS
-from . import COG_TYPE, COG_LINK, ERL_REMINDER
+from . import COG_TYPE, COG_LINK, CB_REMINDER
 from ...db import db
 
 
@@ -34,7 +34,7 @@ async def delete_reminder_command(ctx: tanjun.SlashContext, id:int, bot: hikari.
     if int(ctx.author.id) not in (int(creator_id),int(target_id),*OWNER_IDS):
         raise ValueError("You are not the creator or the target of this reminder. You can not delete this reminder")
     # Formatting output message
-    formatted_reminder = ERL_REMINDER.format_reminder_into_string(reminder)
+    formatted_reminder = CB_REMINDER.format_reminder_into_string(reminder)
     description = formatted_reminder[0]
     fields = formatted_reminder[1]
     embed = Bot.auto_embed(
@@ -50,7 +50,7 @@ async def delete_reminder_command(ctx: tanjun.SlashContext, id:int, bot: hikari.
     db.execute("DELETE FROM Reminders WHERE ReminderID = ?",id)
     db.commit()
     logging.debug(f"Deleted reminder {id} - Info: {reminder}")
-    ERL_REMINDER.load_reminders()
+    CB_REMINDER.load_reminders()
     # Will send to target and creator if target != creator
     if target_id != creator_id and ctx.author.id == target_id:
         if private:
@@ -83,10 +83,10 @@ async def delete_reminder_command(ctx: tanjun.SlashContext, id:int, bot: hikari.
                         reminder[1],reminder[2],reminder[3],reminder[4],reminder[5],reminder[6],reminder[7],reminder[8],reminder[9],reminder[10] # This is a bad way to do this
                         )
                         db.commit()
-                        ERL_REMINDER.load_reminders()
+                        CB_REMINDER.load_reminders()
                         id = db.lastrowid()
                         new_reminder = db.record("SELECT * FROM Reminders WHERE ReminderID = ?", id)
-                        formatted_reminder = ERL_REMINDER.format_reminder_into_string(new_reminder)
+                        formatted_reminder = CB_REMINDER.format_reminder_into_string(new_reminder)
                         description = formatted_reminder[0]
                         fields = formatted_reminder[1]
                         fields = [(f"**Next reminder will be**",fields[0][1],False)]

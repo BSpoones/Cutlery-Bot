@@ -1,8 +1,8 @@
 """
 /commandleaderboard command
 Developed by Bspoones - Dec 2021
-Solely for use in the ERL discord bot
-Doccumentation: https://www.bspoones.com/ERL/Utility#CommandLeaderboard
+Solely for use in the Cutlery Bot discord bot
+Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility#CommandLeaderboard
 """
 
 import hikari, tanjun, math
