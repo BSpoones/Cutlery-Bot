@@ -23,8 +23,13 @@ class Reminder():
     
     """
     def __init__(self):
+        """
+        If you need a docstring to see what's going on here,
+        then you're part of the problem
+        """
         self.reminder_scheduler = AsyncIOScheduler()
         self.load_reminders()
+        self.send_missed_reminders()
         self.bot: hikari.GatewayBot = bot
     
     def load_reminders(self):
@@ -195,11 +200,17 @@ class Reminder():
         return embed
         
     async def send_missed_reminders(self):
+        """
+        Sends all reminders that have failed to send
+        or failed to delete themselves from the database.
+        
+        Runs hourly and at startup
+        """
         reminders = db.records("SELECT * FROM Reminders")
         current_date = datetime.datetime.today()
         for reminder in reminders:
             reminder_type = reminder[5]
-            if reminder_type == "S":
+            if reminder_type == "S": # Only applies to single reminders, no good way of checking if a repeat reminder was missed
                 reminder_id = reminder[0]
                 date = reminder[7]
                 time = reminder[8]
@@ -219,7 +230,13 @@ class Reminder():
                         embed = await self.create_reminder_output(reminder) 
                         db.execute("DELETE FROM Reminders WHERE ReminderID = ?",reminder_id)
                         db.commit()
-                        await self.bot.rest.create_message(channel_id,f"<@{target_id}>",embed=embed,user_mentions=True)
+                        await self.bot.rest.create_message(
+                            channel_id,
+                            f"<@{target_id}> this was a missed reminder\n If this keeps happening, or you think there has been an error, please contact <@724351142158401577>",
+                            embed=embed,
+                            user_mentions=True
+                            )
+    
     def calculate_next_reminder(self,reminder) -> datetime.datetime:
         """
         Calculates a datetime object of the next reminder if repeating
