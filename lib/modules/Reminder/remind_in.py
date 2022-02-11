@@ -11,7 +11,7 @@ from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun import SlashContext as SlashContext
 
-from . import COG_TYPE, COG_LINK, ERL_REMINDER
+from . import COG_TYPE, COG_LINK, CB_REMINDER
 from ...db import db
 
 remind_in_component = tanjun.Component()
@@ -65,10 +65,10 @@ async def remind_in_command(
     date = (new_datetime.date().strftime("%Y%m%d"))
     time = (new_datetime.time().strftime("%H%M%S"))
     next_timestamp = int(new_datetime.timestamp())
-    creator_id = ctx.author.id
-    target_id = target.id
-    group_id = ctx.guild_id
-    channel_id = ctx.channel_id
+    creator_id = str(ctx.author.id)
+    target_id = str(target.id)
+    group_id = str(ctx.guild_id)
+    channel_id = str(ctx.channel_id)
     reminder_type = "S"
     date_type = "YYYYMMDD"
     db.execute(
@@ -95,7 +95,7 @@ async def remind_in_command(
         await ctx.create_initial_response(embed=embed, flags= hikari.MessageFlag.EPHEMERAL)
     else:
         await ctx.create_initial_response(embed=embed)
-    ERL_REMINDER.load_reminders()
+    CB_REMINDER.load_reminders()
     Bot.log_command(ctx,"remindin",str((creator_id,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private)))
 
 
