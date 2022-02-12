@@ -79,7 +79,7 @@ async def delete_reminder_command(ctx: tanjun.SlashContext, id:int, bot: hikari.
                     case "UNDO":
                         # The following is bad form and inefficient, 
                         db.execute(
-                        "INSERT INTO Reminders(CreatorID,TargetID,GroupID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        "INSERT INTO Reminders(CreatorID,TargetID,GuildID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?)",
                         reminder[1],reminder[2],reminder[3],reminder[4],reminder[5],reminder[6],reminder[7],reminder[8],reminder[9],reminder[10] # This is a bad way to do this
                         )
                         db.commit()

@@ -29,7 +29,7 @@ class Reminder():
         """
         self.reminder_scheduler = AsyncIOScheduler()
         self.load_reminders()
-        self.send_missed_reminders()
+        # self.send_missed_reminders()
         self.bot: hikari.GatewayBot = bot
     
     def load_reminders(self):

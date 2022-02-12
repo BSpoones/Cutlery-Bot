@@ -72,7 +72,7 @@ async def remind_every_command(
     channel_id = ctx.channel_id
     reminder_type = "R"
     db.execute(
-        "INSERT INTO Reminders(CreatorID,TargetID,GroupID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO Reminders(CreatorID,TargetID,GuildID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?)",
         creator_id,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private
         )
     db.commit()
