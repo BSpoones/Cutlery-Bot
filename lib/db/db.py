@@ -36,7 +36,7 @@ db_scheduler = AsyncIOScheduler()
 db_scheduler.add_job(
 	interact_with_server,
 	CronTrigger(
-		second=0
+		second=10
 	)
 )
 db_scheduler.start()
@@ -100,11 +100,11 @@ def record(command, *values):
 
 
 def records(command, *values):
-	
-
-	cur.execute(command, tuple(values))
-
-	return cur.fetchall()
+	try:
+		cur.execute(command, tuple(values))
+		return cur.fetchall()
+	except:
+		return []
 
 
 def column(command, *values):
