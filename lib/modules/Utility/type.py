@@ -20,9 +20,9 @@ async def type_command(ctx: Context, message: str, private: bool):
     if private:
         await ctx.respond("Typing....")
         await ctx.delete_initial_response() # NOTE: To be improved, no idea how to though
-        await ctx.get_channel().send(message)
+        await ctx.get_channel().send(message,role_mentions=True,user_mentions=True)
     else:
-        await ctx.respond(message)
+        await ctx.respond(message,role_mentions=True,user_mentions=True)
     Bot.log_command(ctx,"type",str(message),str(private))
 
 @tanjun.as_loader
