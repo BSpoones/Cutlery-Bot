@@ -60,13 +60,14 @@ class Bot(hikari.GatewayBot):
         
         Parameters
         ----------
-        `type`: The type of reminder
-        `author`: Author of command, used for cog name in Cutlery Bot
-        `author_url`: URL of author, used for webstie in Cutlery Bot
-        `title`: Embed title
-        `url`: URL for the embed, will appear as clickable on the title
-        `description`: Embed description
-        `fields`: 3 item tuple for fields (name,value,inline)
+        - `type`: The type of reminder
+        - `author`: Author of command, used for cog name in Cutlery Bot
+        - `author_url`: URL of author, used for webstie in Cutlery Bot
+        - `title`: Embed title
+        - `url`: URL for the embed, will appear as clickable on the title
+        - `description`: Embed description
+        - `fields`: 3 item tuple for fields (name,value,inline).
+        - `colour`: Colour of embed (OPTIONAL: Default is `0x206694`)
         
         `remindertext`: REMINDER TYPE ONLY - Text to be shown on the footer on a reminder
         `member`: REMINDER TYPE ONLY - User to be set for footer
@@ -76,6 +77,20 @@ class Bot(hikari.GatewayBot):
         Returns
         -------
         hikari.Embed
+        
+        Example
+        -------
+        ```py
+        embed = auto_embed(
+            type="info",
+            title = "This is an Embed",
+            url = "http://www.bspoones.com/", # Will set link in title
+            description = "This is my description",
+            fields = [
+                ("Field Title","Field Description",False) # 3rd item is Inline
+                ],
+        )
+        ```
         """
         if "type" not in kwargs:
             embed_type = "default"
@@ -129,7 +144,7 @@ class Bot(hikari.GatewayBot):
             case "error":
                 embed.set_author(name="Error", icon="https://freeiconshop.com/wp-content/uploads/edd/error-flat.png")
             case "lesson":
-                embed.set_author(name=kwargs["schoolname"],icon=kwargs["iconurl"])
+                embed.set_footer(text=kwargs["schoolname"],icon=kwargs["iconurl"] if kwargs["iconurl"] is not None else None)
             case "userinfo":
                 embed.set_footer(text=kwargs["member"].display_name,icon=(kwargs["member"].avatar_url))
             case "reminder":
