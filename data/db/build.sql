@@ -58,6 +58,13 @@ CREATE TABLE IF NOT EXISTS Students (
     Moderator BOOL
 );
 
+CREATE TABLE IF NOT EXISTS Holidays (
+    HolidayID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    GroupID BIGINT(24),
+    StartDate datetime,
+    EndDate datetime
+);
+
 CREATE TABLE IF NOT EXISTS Assignments(
     AssignmentID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     CreatorUserID VARCHAR(18),
