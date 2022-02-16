@@ -1,9 +1,10 @@
 from mysql.connector import connect
 from os.path import isfile
-import json, logging
+import json, logging, datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from mysql.connector.errors import OperationalError
+import mysql
 with open("./secret/dbCredentials.json") as f:
     dbCredentials = json.load(f)
     host = dbCredentials["host"]
@@ -68,7 +69,44 @@ def with_commit(func):
 
 	return inner
 
+class Cache:
+	def __init__(self):
+		self.recent_requests = [] # Limit of 5 items
+		self.recent_outputs = []
+		self.request_timestamps = []
+	def check_cache(self,command) -> list | None:
+		if command in self.recent_requests:
+			index = self.recent_requests.index(command)
+			output = self.recent_outputs[index]
+			timestamp = self.request_timestamps[index]
+			if int(datetime.datetime.today().timestamp()) - int(timestamp) < 10: # 10 second cache
+				return output
+			else:
+				# Expired entry in requests
+				self.recent_requests.pop(index)
+				self.recent_outputs.pop(index)
+				self.request_timestamps.pop(index)
+				return None
+		else:
+			return None
+	def add_to_cache(self,command,output):
+		# Assumes that this output is not already in the cache
+		if len(self.recent_requests) >= 5:
+			self.recent_requests.append(command)
+			self.recent_outputs.append(output)
+			self.request_timestamps.append(datetime.datetime.today().timestamp())
+   
+			self.recent_requests.pop(0)
+			self.recent_outputs.pop(0)
+			self.request_timestamps.pop(0)
+		else:
+			self.recent_requests.append(command)
+			self.recent_outputs.append(output)
+			self.request_timestamps.append(datetime.datetime.today().timestamp())
+	def show_cache(self):
+		print(self.recent_requests,self.recent_outputs,self.request_timestamps)
 
+db_cache = Cache()
 
 @with_commit
 def build():
@@ -93,18 +131,27 @@ def field(command, *values):
 		return fetch[0]
 
 
+
 def record(command, *values):
-	
-	cur.execute(command, tuple(values))
-	return cur.fetchone()
+	cache_output = db_cache.check_cache(command)
+	if cache_output is not None:
+		return cache_output
+	else:
+		cur.execute(command, tuple(values))
+		output = cur.fetchone()
+		db_cache.add_to_cache(command,output)
+		return output
 
 
 def records(command, *values):
-	try:
+	cache_output = db_cache.check_cache(command)
+	if cache_output is not None:
+		return cache_output
+	else:
 		cur.execute(command, tuple(values))
-		return cur.fetchall()
-	except:
-		return []
+		output = cur.fetchall()
+		db_cache.add_to_cache(command,output)
+		return output
 
 
 def column(command, *values):
