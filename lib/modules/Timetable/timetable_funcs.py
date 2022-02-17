@@ -587,6 +587,7 @@ class Timetable():
         NOTE: TO BE MOVED TO ASSIGNMENT FUNCS 
         """
         pass
+    
     def get_assignments_for_datetime(self,datetime_input: datetime) -> list[str] or None:
         """
         Takes a datetime entry and searches for any and all assignments due
@@ -598,6 +599,7 @@ class Timetable():
     
         """
         pass
+    
     def is_image_link_valid(self, link: str) -> bool:
         """
         Validates a given link
