@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS Assignments(
 CREATE TABLE IF NOT EXISTS Reminders (
     ReminderID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     CreatorID VARCHAR(18),
+    TargetType VARCHAR(4), -- role | user | text
     TargetID VARCHAR(18),
     GuildID VARCHAR(18),
     ChannelID VARCHAR(18),
