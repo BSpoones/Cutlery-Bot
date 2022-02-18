@@ -111,7 +111,11 @@ class Bot(hikari.GatewayBot):
                     colour = get_colour_from_member(kwargs["member"])
                 case _:
                     if "member" in kwargs:
-                        colour = get_colour_from_member(kwargs["member"])
+                        print(kwargs["member"])
+                        if kwargs["member"] is None:
+                            colour = hikari.Colour(0x206694)
+                        else:
+                            colour = get_colour_from_member(kwargs["member"])
                     else:
                         logging.error("This shouldn't happen")
                         colour = hikari.Colour(0x2ecc71)
