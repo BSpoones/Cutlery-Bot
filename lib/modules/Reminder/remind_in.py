@@ -18,13 +18,13 @@ remind_in_component = tanjun.Component()
 
 @remind_in_component.add_slash_command
 @tanjun.with_str_slash_option("todo","What do you want me to remind you")
-@tanjun.with_member_slash_option("target","Who am i reminding?")
+@tanjun.with_mentionable_slash_option("target","Who am i reminding?")
 @tanjun.with_str_slash_option("when","How long until your reminder (y,mo,w,d,h,m,s) Examples: 4h15m10s = 4 hours 15 mins 10 seconds")
 @tanjun.with_bool_slash_option("private","Do you want this reminder to be in a private DM?", default=False)
 @tanjun.as_slash_command("remindin","Send a reminder in")
 async def remind_in_command(
     ctx: SlashContext, 
-    target: hikari.Member,
+    target: hikari.Role | hikari.InteractionMember | hikari.User,
     when: str,
     todo: str,
     private: bool,
@@ -67,18 +67,37 @@ async def remind_in_command(
     next_timestamp = int(new_datetime.timestamp())
     creator_id = str(ctx.author.id)
     target_id = str(target.id)
+
+    match (str(type(target))):
+        case "<class 'hikari.guilds.Role'>":
+            target_type = "role"
+        case "<class 'hikari.interactions.base_interactions.InteractionMember'>":
+            target_type = "user"
+    if str(target) == "@everyone":
+        target_id = str(target)[1:] # Removes the @
+        target_type = "text"
+        
+    if str(type(target)) != "<class 'hikari.interactions.base_interactions.InteractionMember'>" and private: # Can't ping a role or @everyone in a private message
+        raise ValueError("You cannot ping a role or @everyone privately.")
+        
     group_id = str(ctx.guild_id)
     channel_id = str(ctx.channel_id)
     reminder_type = "S"
     date_type = "YYYYMMDD"
     db.execute(
-        "INSERT INTO Reminders(CreatorID,TargetID,GuildID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?)",
-        creator_id,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private
+        "INSERT INTO Reminders(CreatorID,TargetType,TargetID,GuildID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        creator_id,target_type,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private
         )
     db.commit()
     id = (db.lastrowid())
-
-    description = f"> ID: `{id}`\n> Target: {target.mention}\n> Todo: `{todo}`"
+    match target_type:
+            case "role":
+                mention = f"<@&{target_id}>"
+            case "user":
+                mention = f"<@{target_id}>"
+            case "text":
+                mention = f"@{target_id}"
+    description = f"> ID: `{id}`\n> Target: {mention}\n> Todo: `{todo}`"
     fields = [
         ("Reminder will send on:",f"<t:{next_timestamp}:D> (:clock1: <t:{next_timestamp}:R>)",False)
     ]

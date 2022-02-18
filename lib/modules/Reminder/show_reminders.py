@@ -55,7 +55,7 @@ async def show_reminders_command(
         raise ValueError(f"You cannot have more than {PAGE_LIMIT} items per page.\nYou entered {amount} items")
     # Retrieve reminder data
     if serveronly:
-        reminders = db.records("SELECT * FROM Reminders WHERE GroupID = ? AND (CreatorID = ? OR TargetID = ?)",str(ctx.guild_id), str(ctx.author.id), str(ctx.author.id))
+        reminders = db.records("SELECT * FROM Reminders WHERE GuildID = ? AND (CreatorID = ? OR TargetID = ?)",str(ctx.guild_id), str(ctx.author.id), str(ctx.author.id))
     else:
         reminders = db.records("SELECT * FROM Reminders WHERE CreatorID = ? OR TargetID = ?", str(ctx.author.id), str(ctx.author.id))
     last_page = math.ceil(len(reminders)/amount)

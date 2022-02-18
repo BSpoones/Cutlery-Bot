@@ -29,7 +29,6 @@ class Reminder():
         """
         self.reminder_scheduler = AsyncIOScheduler()
         self.load_reminders()
-        # self.send_missed_reminders()
         self.bot: hikari.GatewayBot = bot
     
     def load_reminders(self):
@@ -47,11 +46,11 @@ class Reminder():
             
         reminders = db.records("SELECT * FROM Reminders")
         for reminder in reminders:
-            reminder_type = reminder[5]
-            date_type = reminder[6]
-            date = reminder[7]
-            time = reminder[8]
-            private = reminder[10]
+            reminder_type = reminder[6]
+            date_type = reminder[7]
+            date = reminder[8]
+            time = reminder[9]
+            private = reminder[11]
             hour = time[:2]
             minute = time[2:4]
             second = time[4:6] # Default is 00 unless chosen by user
@@ -116,15 +115,23 @@ class Reminder():
         args: Default reminder args as sent from load_reminders
         """
         args = args[0]
-        target_id = args[2]
+        target_type = args[2]
+        target_id = args[3]
         reminder_id = args[0]
-        channel_id = args[4]
-        reminder_type = args[5]
-        
+        channel_id = args[5]
+        reminder_type = args[6]
+        match target_type:
+            case "role":
+                mention = f"<@&{target_id}>"
+            case "user":
+                mention = f"<@{target_id}>"
+            case "text":
+                mention = f"@{target_id}"
+                
         embed = await self.create_reminder_output(args) 
         if reminder_type == "S":
             db.execute("DELETE FROM Reminders WHERE ReminderID = ?",reminder_id)
-        await self.bot.rest.create_message(channel_id,f"<@{target_id}>",embed=embed,user_mentions=True)
+        await self.bot.rest.create_message(channel_id,content=mention,embed=embed,user_mentions=True, mentions_everyone=True,role_mentions=True)
 
     async def send_private_reminder(self,*args):
         """
@@ -137,10 +144,10 @@ class Reminder():
         """
         args = args[0]
         reminder_id = args[0]
-        target_id = args[2]
-        group_id = args[3]
-        reminder_type = args[5]
-        
+        target_type = args[2]
+        target_id = args[3]
+        group_id = args[4]
+        reminder_type = args[6]
         embed = await self.create_reminder_output(args)
         if reminder_type == "S":
             db.execute("DELETE FROM Reminders WHERE ReminderID = ?",reminder_id)
@@ -161,14 +168,18 @@ class Reminder():
             Embed showing all reminder details
         """
         reminder_id = reminder[0]
-        target_id = reminder[2]
-        group_id = reminder[3]
-        target_member = await bot.rest.fetch_member(group_id,target_id)
-        reminder_type = reminder[5]
-        date_type = reminder[6]
-        todo = reminder[9]
-        private = reminder[10]
-        timestamp: datetime.datetime = reminder[11]
+        target_type = reminder[2]
+        target_id = reminder[3]
+        group_id = reminder[4]
+        if target_type == "user":
+            target_member = await bot.rest.fetch_member(group_id,target_id)
+        else:
+            target_member = None
+        reminder_type = reminder[6]
+        date_type = reminder[7]
+        todo = reminder[10]
+        private = reminder[11]
+        timestamp: datetime.datetime = reminder[12]
         description = f"```{todo}``` {NL+'**This is a private reminder**' if private else ''}"
         created_on_timestamp = int(timestamp.timestamp())
         fields = [
@@ -195,7 +206,7 @@ class Reminder():
             description = description,
             fields=fields,
             remindertext = f"ID: {reminder_id}",
-            member = target_member
+            member = target_member # hikari.Member | None
         )
         return embed
         
@@ -209,32 +220,43 @@ class Reminder():
         reminders = db.records("SELECT * FROM Reminders")
         current_date = datetime.datetime.today()
         for reminder in reminders:
-            reminder_type = reminder[5]
+            reminder_type = reminder[6]
             if reminder_type == "S": # Only applies to single reminders, no good way of checking if a repeat reminder was missed
                 reminder_id = reminder[0]
-                date = reminder[7]
-                time = reminder[8]
+                date = reminder[8]
+                time = reminder[9]
                 reminder_datetime = datetime.datetime.strptime(f"{date}{time}","%Y%m%d%H%M%S")
                 if reminder_datetime < current_date:
-                    private = reminder[10]
-                    channel_id = reminder[4]
-                    target_id = reminder[2]
-                    group_id = reminder[3]
+                    private = reminder[11]
+                    channel_id = reminder[5]
+                    target_type = reminder[2]
+                    target_id = reminder[3]
+                    group_id = reminder[4]
+                    match target_type:
+                        case "role":
+                            mention = f"<@&{target_id}>"
+                        case "user":
+                            mention = f"<@{target_id}>"
+                        case "text":
+                            mention = f"@{target_id}"
                     embed = await self.create_reminder_output(reminder) 
                     db.execute("DELETE FROM Reminders WHERE ReminderID = ?",reminder_id)
                     db.commit()
                     if private:
-                        user = await self.bot.rest.fetch_member(group_id,target_id)
-                        await user.send(embed=embed)
+                        if target_type == "user":
+                            user = await self.bot.rest.fetch_member(group_id,target_id)
+                            await user.send(embed=embed)
                     else:
                         embed = await self.create_reminder_output(reminder) 
                         db.execute("DELETE FROM Reminders WHERE ReminderID = ?",reminder_id)
                         db.commit()
                         await self.bot.rest.create_message(
                             channel_id,
-                            f"<@{target_id}> this was a missed reminder\n If this keeps happening, or you think there has been an error, please contact <@724351142158401577>",
+                            f"{mention} this was a missed reminder\n If this keeps happening, or you think there has been an error, please contact <@724351142158401577>",
                             embed=embed,
-                            user_mentions=True
+                            user_mentions=True, 
+                            mentions_everyone=True,
+                            role_mentions=True
                             )
     
     def calculate_next_reminder(self,reminder) -> datetime.datetime:
@@ -249,12 +271,12 @@ class Reminder():
         ------
         Datetime object of the next scheduled reminder for a reapeting reminder type
         """
-        reminder_type = reminder[5]
+        reminder_type = reminder[6]
         if reminder_type != "R":
             raise ValueError("The reminder selected is not a repeating reminder.")
-        date_type = reminder[6]
-        date = reminder[7]
-        time = reminder[8]
+        date_type = reminder[7]
+        date = reminder[8]
+        time = reminder[9]
         current_datetime = datetime.datetime.today()
         current_date = current_datetime.date()
         current_time = current_datetime.time()
@@ -299,23 +321,31 @@ class Reminder():
         """
         reminder_id = reminder[0]
         creator_id = reminder[1]
-        target_id = reminder[2]
-        reminder_type = reminder[5]
-        date_type = reminder[6]
-        date = reminder[7]
-        time = reminder[8]
-        todo = reminder[9]
-        timesent: datetime.datetime = reminder[11]
+        target_type = reminder[2]
+        target_id = reminder[3]
+        reminder_type = reminder[6]
+        date_type = reminder[7]
+        date = reminder[8]
+        time = reminder[9]
+        todo = reminder[10]
+        timesent: datetime.datetime = reminder[12]
         timesent_timestamp = int(timesent.timestamp())
+        match target_type:
+            case "role":
+                mention = f"<@&{target_id}>"
+            case "user":
+                mention = f"<@{target_id}>"
+            case "text":
+                mention = f"@{target_id}"
         if creator_id == target_id:
-            target_str = f"Target: <@{target_id}>"
+            target_str = f"Target: {mention}"
         else:
-            target_str = f"Creator: <@{creator_id}>\n> Target: <@{target_id}>"
+            target_str = f"Creator: <@{creator_id}>\n> Target: {mention}"
         if reminder_type == "S": # Always YYYYMMDD HHMMSS format
             reminder_datetime = datetime.datetime.strptime((date+time),"%Y%m%d%H%M%S")
             reminder_timestamp = int(reminder_datetime.timestamp())
             description = f"> ID: `{reminder_id}`\n> {target_str}\n> Todo: `{todo}`\n> Created at: <t:{timesent_timestamp}:D>\n> Remind at: <t:{reminder_timestamp}:D>"
-            fields = []
+            fields = [("Reminding at",f"<t:{reminder_timestamp}:D> (:clock1: <t:{reminder_timestamp}:R>)",False)]
         elif reminder_type == "R":
             match date_type:
                 case "day":

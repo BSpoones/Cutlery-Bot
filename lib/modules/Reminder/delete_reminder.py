@@ -11,7 +11,7 @@ from lib.core.bot import Bot
 from hikari.events.interaction_events import InteractionCreateEvent
 from hikari.interactions.base_interactions import ResponseType
 from lib.core.client import Client
-from lib.utils.buttons import UNDO_ROW
+from lib.utils.buttons import EMPTY_ROW, UNDO_ROW
 from data.bot.data import OWNER_IDS
 from . import COG_TYPE, COG_LINK, CB_REMINDER
 from ...db import db
@@ -29,9 +29,13 @@ async def delete_reminder_command(ctx: tanjun.SlashContext, id:int, bot: hikari.
         raise ValueError("Invalid ID, use `/showreminders` to show your reminders.")
     # Check if user is authorised
     creator_id = reminder[1]
-    target_id = reminder[2]
-    private = reminder[10]
-    if int(ctx.author.id) not in (int(creator_id),int(target_id),*OWNER_IDS):
+    target_id = reminder[3]
+    try:
+        target_id = int(target_id)
+    except ValueError:
+        pass
+    private = reminder[11]
+    if int(ctx.author.id) not in (int(creator_id),(target_id),*OWNER_IDS):
         raise ValueError("You are not the creator or the target of this reminder. You can not delete this reminder")
     # Formatting output message
     formatted_reminder = CB_REMINDER.format_reminder_into_string(reminder)
@@ -79,8 +83,8 @@ async def delete_reminder_command(ctx: tanjun.SlashContext, id:int, bot: hikari.
                     case "UNDO":
                         # The following is bad form and inefficient, 
                         db.execute(
-                        "INSERT INTO Reminders(CreatorID,TargetID,GuildID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                        reminder[1],reminder[2],reminder[3],reminder[4],reminder[5],reminder[6],reminder[7],reminder[8],reminder[9],reminder[10] # This is a bad way to do this
+                        "INSERT INTO Reminders(CreatorID,TargetType, TargetID,GuildID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                        reminder[1],reminder[2],reminder[3],reminder[4],reminder[5],reminder[6],reminder[7],reminder[8],reminder[9],reminder[10], reminder[11] # This is a bad way to do this
                         )
                         db.commit()
                         CB_REMINDER.load_reminders()
@@ -100,10 +104,11 @@ async def delete_reminder_command(ctx: tanjun.SlashContext, id:int, bot: hikari.
                             ctx=ctx
                         )
                         await ctx.edit_initial_response(embed=embed,components=[])
+                        return
                     case "AUTHOR_DELETE_BUTTON":
                         await ctx.delete_initial_response()
 
-        await ctx.edit_initial_response(components=[])
+        await ctx.edit_initial_response(components=[EMPTY_ROW])
     except:
         pass
 @tanjun.as_loader
