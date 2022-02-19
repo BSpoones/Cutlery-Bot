@@ -77,16 +77,28 @@ class Cache:
 		self.recent_values = []
 		self.recent_outputs = []
 		self.request_timestamps = []
+		CacheScheduler = AsyncIOScheduler()
+		CacheScheduler.add_job(
+			self.clear_cache,
+			CronTrigger(second=0,jitter=10)
+		)
+		CacheScheduler.start()
+	def clear_cache(self):
+		self.recent_requests = [] # Limit of 5 items
+		self.recent_values = []
+		self.recent_outputs = []
+		self.request_timestamps = []
 	def check_cache(self,command, values) -> list | None:
 		if command in self.recent_requests:
 			index = self.recent_requests.index(command)
 			if values == self.recent_values[index]:
 				output = self.recent_outputs[index]
 				timestamp = self.request_timestamps[index]
-				if int(datetime.datetime.today().timestamp()) - int(timestamp) < 10: # 10 second cache
+				if int(datetime.datetime.today().timestamp()) - int(timestamp) < 3: # 3 second cache
 					return output
 				else:
 					self.remove_item_from_cache(index)
+					return None
 			else:
 				# Expired entry in requests
 				self.remove_item_from_cache(index)
@@ -95,18 +107,18 @@ class Cache:
 			return None
 	def add_to_cache(self,command,values,output):
 		# Assumes that this output is not already in the cache
-		if len(self.recent_requests) >= 5:
+		if len(self.recent_requests) >= 10:
 			self.recent_requests.append(command)
 			self.recent_outputs.append(output)
 			self.recent_values.append(values)
-			self.request_timestamps.append(datetime.datetime.today().timestamp())
+			self.request_timestamps.append(int(datetime.datetime.today().timestamp()))
    
 			self.remove_item_from_cache(0)
 		else:
 			self.recent_requests.append(command)
 			self.recent_outputs.append(output)
 			self.recent_values.append(values)
-			self.request_timestamps.append(datetime.datetime.today().timestamp())
+			self.request_timestamps.append(int(datetime.datetime.today().timestamp()))
 
 
 	def remove_item_from_cache(self,index):
@@ -115,8 +127,12 @@ class Cache:
 		self.recent_outputs.pop(index)
 		self.request_timestamps.pop(index)
 
-	def show_cache(self):
-		print(self.recent_requests,self.recent_values,self.recent_outputs,self.request_timestamps)
+	def show_cache(self, index=None):
+		if index is None:
+			print(self.recent_requests,self.recent_values,self.recent_outputs,self.request_timestamps)
+		else:
+			print(self.recent_requests[index],self.recent_values[index],self.recent_outputs[index],self.request_timestamps[index])
+			
 
 db_cache = Cache()
 
