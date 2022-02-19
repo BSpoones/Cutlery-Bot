@@ -309,15 +309,17 @@ class Timetable():
             await asyncio.sleep(DeleteAfter)
             await message.delete()
         
-    def is_datetime_in_holiday(self,GroupID,DateTimeInput) -> bool:
+    def is_datetime_in_holiday(self,GroupID,DateTimeInput: datetime.datetime) -> bool:
         """
         Takes the datetime of a target lesson embed or countdown and checks if it takes place
         during a group's set holiday.
         """
         Holidays = db.records("SELECT * FROM Holidays WHERE GroupID = ?",str(GroupID))
         for holiday in Holidays:
-            StartDateTime: datetime = holiday[2]
-            EndDateTime: datetime = holiday[3]
+
+            StartDateTime: datetime = datetime.datetime.combine(holiday[2], datetime.time(0,0,0))
+            EndDateTime: datetime = datetime.datetime.combine(holiday[3], datetime.time(0,0,0))
+
             if StartDateTime<=DateTimeInput<=EndDateTime: # If current time is inbetween these dates
                 return True
         else: # If there are no holidays or it's not in a holiday
@@ -330,8 +332,9 @@ class Timetable():
         This is similar to `is_datetime_in_holiday` but does not make any calls to the database and only
         checks one holiday at a time
         """
-        StartDateTime: datetime = Holiday[2]
-        EndDateTime: datetime = Holiday[3]
+        StartDateTime: datetime = datetime.datetime.combine(Holiday[2], datetime.time(0,0,0))
+        EndDateTime: datetime = datetime.datetime.combine(Holiday[3], datetime.time(0,0,0))
+        
         if StartDateTime<=DateTimeInput<=EndDateTime: # If current time is inbetween these dates
             return True
         else: # If there are no holidays or it's not in a holiday
@@ -347,7 +350,7 @@ class Timetable():
         ----
             GroupID (int): GroupID from Groups Table in database
         """
-        NextLesson = self.get_next_lesson((str(GroupID),))
+        NextLesson = self.get_next_lesson((str(GroupID),))[0]
         GroupInfo = db.record("SELECT * FROM LessonGroups WHERE GroupID = ?",GroupID)
 
         DayOfWeek = int(NextLesson[4])      
@@ -394,7 +397,7 @@ class Timetable():
         else:
             return True
     
-    def get_lesson_during_datetime(self, GroupIDs: tuple, DatetimeInput: datetime) -> tuple or None:
+    def get_lesson_during_datetime(self, GroupIDs: tuple, DatetimeInput: datetime) -> tuple | None:
         """
         Similar to `is_datetime_in_lesson`, it uses a datetime object and a tuple of GroupIDs to find out
         if a chosen datetime takes place during a lesson. It will then return this lesson if found or None
@@ -436,7 +439,7 @@ class Timetable():
         else:
             return LessonsDuringDatetime
     
-    def get_timetable(self,UserID = None, GroupIDs: tuple[str] | str  = None, DatetimeInput: datetime.datetime=None) -> list or None:
+    def get_timetable(self,UserID = None, GroupIDs: tuple[str] | str  = None, DatetimeInput: datetime.datetime=None) -> list | None:
         """
         Uses either a UserID or a GroupID to retrieve a timetable in its entirety.
         Added option to search for a datetime object
@@ -469,58 +472,64 @@ class Timetable():
                 pass
             InputWeekday = DatetimeInput.weekday()
             Lessons = self.get_non_holiday_lessons_from_GroupIDs(GroupIDs,DatetimeInput)
-            Lessons = [x for x in Lessons if x[4] == str(InputWeekday)]
+            if Lessons is None:
+                return None
+            Lessons = [x for x in Lessons if x[4] == InputWeekday]
         if Lessons == []:
             return None
         else:
             return Lessons
         
-    def get_non_holiday_lessons_from_GroupIDs(self,GroupIDs: tuple[str] | str,DatetimeInput: datetime.datetime):
+    def get_non_holiday_lessons_from_GroupIDs(self,GroupIDs: tuple[str] | str,DatetimeInput: datetime.datetime) -> list | None:
         """
         Gets tuple of groupIDs and a datetime, will return any lessons
         that aren't during a holiday or None if there aren't any
         """
-        Lessons = db.records(f"SELECT * FROM Lessons WHERE GroupID IN (?) ORDER BY DayOfWeek ASC, StartTime ASC",(','.join(GroupIDs)))
+   
+        Lessons = db.records(f"SELECT * FROM Lessons WHERE GroupID IN (?) AND DayOfWeek = ? ORDER BY StartTime ASC",(','.join(GroupIDs)),DatetimeInput.weekday())
         Holidays = db.records(f"SELECT * FROM Holidays WHERE GroupID IN (?)",(','.join(GroupIDs)))
         # Checks for any holidays
         for Holiday in Holidays:
             HolidayGroupID = Holiday[1]
             if self.is_datetime_in_a_holiday(DatetimeInput,Holiday):
-                for i, Lesson in enumerate(Lessons):
-                    """
-                    Since people can be in multiple groups and those groups can have different
-                    holidays, this only excludes lessons that are currently in a holiday. Meaning
-                    it will not just remove all lessons if only one group is in a holiday
-                    """
-                    LessonGroupID = Lesson[1]
-                    if LessonGroupID == HolidayGroupID:
-                        Lessons.pop(i)
+                """
+                Since people can be in multiple groups and those groups can have different
+                holidays, this only excludes lessons that are currently in a holiday. Meaning
+                it will not just remove all lessons if only one group is in a holiday
+                """
+                Lessons = [x for x in Lessons if x[1] != HolidayGroupID]
         if Lessons == []:
-            return False
+            return None
         else:
             return Lessons
             
-    def get_group_ids_from_user(self,UserID) -> tuple or None:
+    def get_group_ids_from_user(self,UserID) -> tuple | None:
         """
         Searches through the Students table on database for a discord UserID
         Will return a tuple of GroupIDs if found and None is the user isn't in
         any groups.
         """
-        GroupIDs = db.records("SELECT GroupID FROM Students WHERE UserID = ?",UserID)
+        GroupIDs = db.column("SELECT GroupID FROM Students WHERE UserID = ?",UserID)
         if GroupIDs == []:
             return None
         else:
-            return GroupIDs
+            GroupIDs = list(map(str,GroupIDs))
+            return GroupIDs[0]
     
-    def get_group_info_from_input(self,Group_Input) -> tuple or None:
+    def get_group_id_from_input(self,GroupInput) -> tuple | None:
         """
         Searches through the Groups table for an input.
-        This input could be a GroupCode, GroupName or a GroupID
-        Similar to above, it will return the group info of the selected group
+        This input could be a GroupCode or GroupName
+        Similar to above, it will return the group id of the selected group
         """
-        pass
+        GroupIDs = db.column("SELECT * FROM LessonGroups WHERE GroupName = ? OR GroupCode = ?",GroupInput,GroupInput)
+        if GroupIDs == []:
+            return None
+        else:
+            GroupIDs = list(map(str,GroupIDs))
+            return GroupIDs[0]
     
-    def get_next_lesson(self,GroupIDs: tuple[str] | str) -> tuple or None:
+    def get_next_lesson(self,GroupIDs: tuple[str] | str) -> tuple and datetime.datetime | None:
         """
         Uses the current datetime to find the next occourance of a lesson in a
         tuple of groups. 
@@ -536,47 +545,45 @@ class Timetable():
         Lessons = db.records(f"SELECT * FROM Lessons WHERE GroupID IN ({','.join(GroupIDs)}) ORDER BY DayOfWeek ASC, StartTime ASC")
         Holidays = db.records(f"SELECT * FROM Holidays WHERE GroupID IN ({','.join(GroupIDs)})")
         while Lessons != []: # If there's no lessons this will run forever
+            LessonsForDay = Lessons.copy()
             # Checks for any holidays
             for Holiday in Holidays:
                 HolidayGroupID = Holiday[1]
                 if self.is_datetime_in_a_holiday(CurrentDateTime,Holiday):
-                    
                     # self.get_non_holiday_lessons_from_GroupIDs not used because it has custom elements in this one
-                    for i, Lesson in enumerate(Lessons):
-                        """
-                        Since people can be in multiple groups and those groups can have different
-                        holidays, this only excludes lessons that are currently in a holiday. Meaning
-                        it will not just remove all lessons if only one group is in a holiday
-                        """
-                        LessonGroupID = Lesson[1]
-                        if LessonGroupID == HolidayGroupID:
-                            Lessons.pop(i)
+                    """
+                    Since people can be in multiple groups and those groups can have different
+                    holidays, this only excludes lessons that are currently in a holiday. Meaning
+                    it will not just remove all lessons if only one group is in a holiday
+                    """
+                    LessonsForDay = [x for x in LessonsForDay if x[1] != HolidayGroupID]
                 # NOTE: Add a thing here to set the current date to the end of a holiday to save processing time
-            if Lessons == []:
+            if LessonsForDay == []:
                 CurrentDateTime += datetime.timedelta(days=1)
                 CurrentTime = datetime.time(hour=0,minute=0,second=0)
                 
                 continue
             # Checks if a lesson is on that weekday
             CurrentWeekday = CurrentDateTime.weekday()
-            LessonsOnWeekday = [x for x in Lessons if x[4] == CurrentWeekday]
+            LessonsOnWeekday = [x for x in LessonsForDay if x[4] == CurrentWeekday]
             if LessonsOnWeekday == []:
                 # If there are no lessons on that weekday
                 CurrentDateTime += datetime.timedelta(days=1)
                 CurrentTime = datetime.time(hour=0,minute=0,second=0)
                 continue
             # Since there are lessons on this datetime, it will find the next occourance
-            CurrentTimeStr = CurrentTime.strftime(HMS_FMT)
-            LessonsAfterTime = [x for x in Lessons if int(x[6]+"00") > int(CurrentTimeStr)]
+            LessonsAfterTime = [x for x in LessonsOnWeekday if datetime.datetime.strptime(x[6],HM_FMT).time() > CurrentTime]
             if LessonsAfterTime == []: # If there are no lessons after the current time
                 CurrentDateTime += datetime.timedelta(days=1)
                 CurrentTime = datetime.time(hour=0,minute=0,second=0)
                 continue
             NextLesson = (LessonsAfterTime[0])
+            NextLesssonDateTime = datetime.datetime.combine(CurrentDateTime.date(),datetime.datetime.strptime(LessonsAfterTime[0][6],HM_FMT).time())
             break
-        return NextLesson
+        print(NextLesson)
+        return NextLesson, NextLesssonDateTime
     
-    def get_assignments_for_lesson(self, lesson: list[str]) -> list[str] or None:
+    def get_assignments_for_lesson(self, lesson: list[str]) -> list[str] | None:
         """
         Takes a lesson entry and searches for any and all assignments due 
         30 mins before <= lesson <= 30 mins after as long as those time brackets
@@ -588,7 +595,7 @@ class Timetable():
         """
         pass
     
-    def get_assignments_for_datetime(self,datetime_input: datetime) -> list[str] or None:
+    def get_assignments_for_datetime(self,datetime_input: datetime) -> list[str] | None:
         """
         Takes a datetime entry and searches for any and all assignments due
         on that day.
