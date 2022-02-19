@@ -46,6 +46,22 @@ PAGENATE_ROW = (
 
 )
 
+TIMELINE_ROW = (
+    hikari.impl.ActionRowBuilder()  
+    .add_button(ButtonStyle.PRIMARY, "BACK")
+    .set_emoji("◀")
+    .add_to_container()
+
+    .add_button(ButtonStyle.PRIMARY, "NEXT")
+    .set_emoji("▶")
+    .add_to_container()
+    
+    .add_button(ButtonStyle.DANGER, DELETE_CUSTOM_ID)
+    .set_emoji("❌")
+    .add_to_container()
+
+)
+
 UNDO_ROW = (
     hikari.impl.ActionRowBuilder()
     .add_button(ButtonStyle.PRIMARY, "UNDO")
