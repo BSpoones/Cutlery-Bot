@@ -1,12 +1,10 @@
-from os import stat
-import hikari, tanjun, datetime as dt, logging, json, time
 
+import hikari, tanjun, datetime as dt, logging, time
 from tanjun.abc import Context
 from data.bot.data import *
 from lib.core.error_handling import HOOKS
 from lib.core.event_handler import EventHandler
 from .client import Client
-from hikari import Embed
 from ..db import db
 # logging.basicConfig(level=logging.DEBUG)
 logging.getLogger('apscheduler.executors.default').propagate = False # Prevents logging pointless info every 60 seconds
