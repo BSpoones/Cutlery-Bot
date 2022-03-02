@@ -1,9 +1,9 @@
 import logging, hikari, tanjun
-
+from tanjun.abc import SlashContext as SlashContext
 HOOKS = tanjun.AnyHooks()
 
 @HOOKS.with_on_error
-async def on_error(ctx: tanjun.SlashContext, exc: Exception):
+async def on_error(ctx: SlashContext, exc: Exception):
     exception_type = (type(exc).__name__)
     exception_args = "\n".join(list(map(str,exc.args)))
     # Has to be imported in func as Bot class uses this to init
