@@ -11,6 +11,7 @@ from lib.core.bot import Bot
 from hikari.events.interaction_events import InteractionCreateEvent
 from hikari.interactions.base_interactions import ResponseType
 from lib.core.client import Client
+from tanjun.abc import SlashContext as SlashContext
 from lib.utils.buttons import EMPTY_ROW, UNDO_ROW
 from data.bot.data import OWNER_IDS
 from . import COG_TYPE, COG_LINK, CB_REMINDER
@@ -22,7 +23,7 @@ delete_reminder_component = tanjun.Component()
 @delete_reminder_component.add_slash_command
 @tanjun.with_int_slash_option("id","ID of the reminder you would like to delete")
 @tanjun.as_slash_command("deletereminder","Deletes a reminder. You must be the creator or target of the reminder to delete it.")
-async def delete_reminder_command(ctx: tanjun.SlashContext, id:int, bot: hikari.GatewayBot = tanjun.injected(type=hikari.GatewayBotAware)):
+async def delete_reminder_command(ctx: SlashContext, id:int, bot: hikari.GatewayBot = tanjun.injected(type=hikari.GatewayBotAware)):
     # Retrieve reminder data
     reminder = db.record("SELECT * FROM Reminders WHERE ReminderID = ?", id)
     if reminder is None:
