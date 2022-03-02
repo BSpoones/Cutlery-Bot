@@ -61,6 +61,20 @@ def reload():
     cur = cxn.cursor()
     logging.info("Successfully reconnected to the database")
 
+def close():
+    """
+    Disconnects the database from the server
+    """
+    commit()
+    logging.info("Closing database connection.....")
+    try:
+        cur.close()
+        cxn.close()
+        logging.info("Database connection closed")
+    except:
+        logging.error("THIS FAILED")
+        pass
+
 def lastrowid():
 	return cur.lastrowid
 
