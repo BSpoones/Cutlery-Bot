@@ -58,7 +58,7 @@ async def nextlesson_command(ctx: Context, group: str = None,):
     fields = [
         (
             "This lesson starts at",
-            f"<t:{StartTimeStamp}:t> :clock1: <t:{StartTimeStamp}:R>",
+            f"<t:{StartTimeStamp}:d> <t:{StartTimeStamp}:t> :clock1: <t:{StartTimeStamp}:R>",
             False
         )
     ]
@@ -72,7 +72,8 @@ async def nextlesson_command(ctx: Context, group: str = None,):
         ctx=ctx
     )
     await ctx.respond(embed=embed)
-    message = await ctx.fetch_initial_response()
+    for GroupID in GroupIDs:
+        await CB_TIMETABLE.update_time_channels(GroupID)
     
     Bot.log_command(ctx,"nextlesson")
 
