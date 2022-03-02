@@ -437,7 +437,7 @@ class Timetable():
         if LessonsDuringDatetime == []:
             return None
         else:
-            return LessonsDuringDatetime
+            return LessonsDuringDatetime[0] # Assuming one lesson at a time
     
     def get_timetable(self,UserID = None, GroupIDs: tuple[str] | str  = None, DatetimeInput: datetime.datetime=None) -> list | None:
         """
