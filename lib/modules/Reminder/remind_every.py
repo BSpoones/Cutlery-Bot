@@ -10,6 +10,8 @@ import tanjun, hikari, re, datetime
 from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import Context as Context
+from tanjun.abc import SlashContext as SlashContext
+
 from . import COG_TYPE, COG_LINK, DAYS_OF_WEEK, CB_REMINDER
 from ...db import db
 
@@ -24,7 +26,7 @@ remind_every_component = tanjun.Component()
 @tanjun.with_bool_slash_option("private","Do you want this reminder to be in a private DM?", default=False)
 @tanjun.as_slash_command("remindevery","Send a repeating reminder")
 async def remind_every_command(
-    ctx: tanjun.SlashContext, 
+    ctx: SlashContext, 
     target: hikari.Role | hikari.InteractionMember | hikari.User,
     date: str,
     time: str,

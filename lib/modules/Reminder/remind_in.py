@@ -9,7 +9,8 @@ import tanjun, hikari, re, datetime
 from dateutil.relativedelta import relativedelta
 from lib.core.bot import Bot
 from lib.core.client import Client
-from tanjun import SlashContext as SlashContext
+from tanjun.abc import SlashContext as SlashContext
+
 
 from . import COG_TYPE, COG_LINK, CB_REMINDER
 from ...db import db

@@ -10,7 +10,8 @@ import tanjun, hikari, re, datetime
 from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import Context as Context
-from tanjun import SlashContext as SlashContext
+from tanjun.abc import SlashContext as SlashContext
+
 from . import COG_TYPE, COG_LINK, DAYS_OF_WEEK, CB_REMINDER
 from ...db import db
 
