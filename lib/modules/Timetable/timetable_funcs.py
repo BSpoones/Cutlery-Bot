@@ -9,8 +9,6 @@ from email.headerregistry import Group
 from multiprocessing.sharedctypes import Value
 import random
 import re
-import time
-from turtle import goto
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from PIL import Image
@@ -580,7 +578,6 @@ class Timetable():
             NextLesson = (LessonsAfterTime[0])
             NextLesssonDateTime = datetime.datetime.combine(CurrentDateTime.date(),datetime.datetime.strptime(LessonsAfterTime[0][6],HM_FMT).time())
             break
-        print(NextLesson)
         return NextLesson, NextLesssonDateTime
     
     def get_assignments_for_lesson(self, lesson: list[str]) -> list[str] | None:
