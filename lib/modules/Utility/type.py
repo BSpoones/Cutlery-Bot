@@ -9,6 +9,8 @@ import tanjun, hikari
 from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import Context as Context
+from tanjun.abc import SlashContext as SlashContext
+
 
 type_component = tanjun.Component()
 
@@ -17,10 +19,21 @@ type_component = tanjun.Component()
 @tanjun.with_bool_slash_option("private","Choose for the message to be sent privately", default= False)
 @tanjun.with_str_slash_option("message","Message for the bot to say")
 @tanjun.as_slash_command("type","Gets Cutlery Bot to send a message")
-async def type_command(ctx: tanjun.SlashContext, message: str, private: bool, channel: hikari.InteractionChannel):
+async def type_command(ctx: SlashContext, message: str, private: bool, channel: hikari.InteractionChannel = None):
+    member = ctx.member
+    guild = ctx.get_guild()    
+    perms = tanjun.utilities.calculate_permissions(
+        member=member,
+        guild=guild,
+        roles={r.id: r for r in member.get_roles()},
+        channel = guild.get_channel(channel.id)
+    )
+    permissions = (str(perms).split("|"))
     if channel is not None:
         if str(channel.type) != "GUILD_TEXT":
             raise ValueError("You can only select a text channel to send a message in.")
+        if "SEND_MESSAGES" not in permissions:
+            raise PermissionError("You do not have permissions to send messages in this channel")
     if private:
         if channel is not None:
             await ctx.rest.create_message(channel.id,message,role_mentions=True,user_mentions=True)
@@ -36,7 +49,6 @@ async def type_command(ctx: tanjun.SlashContext, message: str, private: bool, ch
         else:
             await ctx.respond(message,role_mentions=True,user_mentions=True)
     Bot.log_command(ctx,"type",str(message),str(private))
-
 @tanjun.as_loader
 def load_components(client: Client):
     client.add_component(type_component.copy())
