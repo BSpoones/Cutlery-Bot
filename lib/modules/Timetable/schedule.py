@@ -13,6 +13,7 @@ from hikari.interactions.base_interactions import ResponseType
 from tanjun.abc import Context as Context
 from lib.core.bot import Bot
 from lib.core.client import Client
+from tanjun.abc import SlashContext as SlashContext
 from lib.modules.Timetable.timetable_funcs import HM_FMT
 from lib.utils.buttons import EMPTY_ROW, PAGENATE_ROW, TIMELINE_ROW
 from . import COG_TYPE, COG_LINK, CB_TIMETABLE,DAYS_OF_WEEK
@@ -105,7 +106,7 @@ schedule_component = tanjun.Component()
 @tanjun.with_str_slash_option("day","Day of week to check the schedule for",choices=list(map(str.capitalize,DAYS_OF_WEEK+["tomorrow","yesterday"])), default=None)
 @tanjun.as_slash_command("schedule","Gets the schedule for you or a lesson group")
 async def schedule_command(
-    ctx: tanjun.SlashContext, 
+    ctx: SlashContext, 
     day: str = None, 
     group: str = None,
     bot: hikari.GatewayBot = tanjun.injected(type=hikari.GatewayBotAware)
