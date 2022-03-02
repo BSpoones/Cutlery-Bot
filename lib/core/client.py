@@ -1,6 +1,5 @@
 from pathlib import Path
-import hikari, tanjun, logging
-
+import tanjun, logging
 
 class Client(tanjun.Client):
     def __init__(self,*args,**kwargs):
