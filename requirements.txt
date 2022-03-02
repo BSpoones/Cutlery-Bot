@@ -1,0 +1,10 @@
+hikari
+hikari-tanjun
+mysql-connector-python
+apscheduler
+python-dateutil
+psutil
+humanfriendly
+PyDictionary
+pillow
+validators
