@@ -1,4 +1,3 @@
-from tkinter import Button
 import hikari
 from hikari.messages import ButtonStyle
 
