@@ -11,6 +11,7 @@ from hikari.events.interaction_events import InteractionCreateEvent
 from hikari.interactions.base_interactions import ResponseType
 from lib.core.bot import Bot
 from lib.core.client import Client
+from tanjun.abc import SlashContext as SlashContext
 from lib.utils.buttons import PAGENATE_ROW, EMPTY_ROW
 from . import COG_TYPE, COG_LINK,CB_REMINDER
 from ...db import db
@@ -42,7 +43,7 @@ show_reminders_component = tanjun.Component()
 @tanjun.with_int_slash_option("page","Page number.",default=None)
 @tanjun.as_slash_command("showreminders","Shows all reminders that you have either created or been a target for")
 async def show_reminders_command(
-    ctx: tanjun.SlashContext, 
+    ctx: SlashContext, 
     serveronly :bool, 
     amount: int, 
     page: int,
