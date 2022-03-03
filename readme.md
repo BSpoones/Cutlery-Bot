@@ -14,8 +14,10 @@ Planned features:
  - GIF
     - Ability to read and create slash commands from an iamge input in a database
 
-- Commands:
 An unfinished command will have the prefix `NF` in the commands table
+
+- Commands:
+
 | Command | Args | Description |
 |---------|------|-------------|
 | Purge | (limit) | Purges X messages in chat |
