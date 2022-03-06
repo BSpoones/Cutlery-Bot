@@ -53,6 +53,12 @@ async def command_leaderboard_command(
     page: int,
     bot: hikari.GatewayBot = tanjun.injected(type=hikari.GatewayBotAware),
     ):
+    if amount is None:
+        amount = 10
+    elif amount >PAGE_LIMIT:
+        raise ValueError(f"You cannot have more than `{PAGE_LIMIT}` items per page.\nYou entered `{amount}` items")
+    Bot.log_command(ctx,"commandleaderboard")
+    
     if page is None:
         page = 1
     if serveronly:
@@ -63,10 +69,7 @@ async def command_leaderboard_command(
 
     a = dict(Counter(commands_lst))
     sorted_commands_dict = dict(sorted(a.items(), key=lambda item: item[1],reverse=True))
-    if amount is None:
-        amount = 10
-    elif amount >PAGE_LIMIT:
-        raise ValueError(f"You cannot have more than `{PAGE_LIMIT}` items per page.\nYou entered `{amount}` items")
+    
     last_page = math.ceil(len(a)/amount) 
     
     if page > last_page:
@@ -78,7 +81,6 @@ async def command_leaderboard_command(
     embed = build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page)
     
     message = await ctx.respond(embed=embed, components=[PAGENATE_ROW,],ensure_result=True)
-    Bot.log_command(ctx,"commandleaderboard")
     try:
         with bot.stream(InteractionCreateEvent, timeout=60).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
             async for event in stream:
