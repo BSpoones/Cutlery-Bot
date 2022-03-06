@@ -7,15 +7,12 @@ Doccumentation: https://www.bspoones.com/Cutlery-Bot/Timetable#NextLesson
 
 from xml.dom import NotFoundErr
 from humanfriendly import format_timespan
-import tanjun, datetime, hikari
-from hikari.events.interaction_events import InteractionCreateEvent
-from hikari.interactions.base_interactions import ResponseType
+import tanjun, datetime
 from tanjun.abc import Context as Context
 from lib.core.bot import Bot
 from lib.core.client import Client
 from lib.modules.Timetable.timetable_funcs import HM_FMT
-from lib.utils.buttons import EMPTY_ROW, TIMELINE_ROW
-from . import COG_TYPE, COG_LINK, CB_TIMETABLE,DAYS_OF_WEEK
+from . import COG_TYPE, COG_LINK, CB_TIMETABLE
 from ...db import db
 from lib.utils import utilities as BotUtils
     
@@ -54,11 +51,16 @@ async def nextlesson_command(ctx: Context, group: str = None,):
     else:
         SubjectStr = ""
     title = f"Next lesson"
+    
     description = f"{SubjectStr}> Teacher: `{TeacherName}`\n> Time: <t:{StartTimeStamp}:t> - <t:{EndTimeStamp}:t> `({LessonDurationStr})`\n> Room: `{Room}`"
+    if StartTime.date() == datetime.datetime.today().date(): # Only shows time if lesson occours today
+        StartTimeStr = f"<t:{StartTimeStamp}:t>"
+    else:
+        StartTimeStr = f"<t:{StartTimeStamp}:d> <t:{StartTimeStamp}:t>"
     fields = [
         (
             "This lesson starts at",
-            f"<t:{StartTimeStamp}:d> <t:{StartTimeStamp}:t> :clock1: <t:{StartTimeStamp}:R>",
+            f"{StartTimeStr} :clock1: <t:{StartTimeStamp}:R>",
             False
         )
     ]
