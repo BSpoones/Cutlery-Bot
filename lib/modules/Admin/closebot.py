@@ -5,7 +5,8 @@ Solely for use in the Cutlery Bot discord bot
 Doccumentation: https://www.bspoones.com/Cutlery-Bot/Admin#Closebot
 """
 
-import tanjun, hikari
+from humanfriendly import format_timespan
+import tanjun, hikari, time
 from tanjun.abc import Context as Context
 from data.bot.data import OWNER_IDS
 from lib.core.bot import Bot
@@ -20,10 +21,14 @@ async def closebot_command(
     ctx: Context,
     bot: hikari.GatewayBot = tanjun.injected(type=hikari.GatewayBotAware)
     ):
+    uptime = format_timespan((time.perf_counter()-ctx.client.metadata["start time"]))
     if ctx.author.id in OWNER_IDS:
         embed = Bot.auto_embed(
             type="info",
             title="Closing the bot...",
+            fields = [
+                ("Bot Uptime :stopwatch:",uptime,False)
+                ],
             ctx=ctx
         )
         await ctx.respond(embed)
