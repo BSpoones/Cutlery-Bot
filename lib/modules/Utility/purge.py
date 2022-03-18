@@ -22,7 +22,12 @@ purge_component = tanjun.Component()
 async def purge_command(ctx: Context, limit: int):
     if limit <= MAX_PURGE:
         msgs = await ctx.rest.fetch_messages(ctx.channel_id).limit(limit)
-        await ctx.rest.delete_messages(ctx.channel_id, msgs)
+        # The following distinguishes between bulk delete and regular deletion
+        try: # If all messages being purged are younger than 14 days old
+            await ctx.rest.delete_messages(ctx.channel_id, msgs)
+        except:
+            for msg in msgs:
+                await msg.delete() # This is the best possible method
         await ctx.respond(f"Deleted {limit} messages.")
         Bot.log_command(ctx,"purge",limit)
     else:
