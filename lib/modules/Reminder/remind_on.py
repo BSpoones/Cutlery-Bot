@@ -107,11 +107,11 @@ async def remind_on_command(
             target_type = "user"
     if str(target) == "@everyone":
         target_id = str(target)[1:] # Removes the @
-        print(target_id)
         target_type = "text"
         
     if str(type(target)) != "<class 'hikari.interactions.base_interactions.InteractionMember'>" and private: # Can't ping a role or @everyone in a private message
         raise ValueError("You cannot ping a role or @everyone privately.")
+    
     db.execute(
         "INSERT INTO Reminders(CreatorID,TargetType,TargetID,GuildID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         creator_id,target_type,target_id,group_id,channel_id,reminder_type,date_type,date,time,todo,private
