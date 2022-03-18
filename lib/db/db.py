@@ -58,7 +58,7 @@ def reload():
             password=password,
             database=database,
         )
-    cur = cxn.cursor()
+    cur = cxn.cursor(prepared=True)
     logging.info("Successfully reconnected to the database")
 
 def close():
@@ -210,7 +210,7 @@ def count(command,*values):
 
 
 def execute(command, *values):
-	cur.execute(command, tuple(values))
+	cur.execute(command, tuple(map(str,values)))
 
 
 def multiexec(command, valueset):
