@@ -4,20 +4,12 @@ Developed by Bspoones - Feb 2022
 Solely for use in the Cutlery Bot discord bot
 Doccumentation: https://www.bspoones.com/Cutlery-Bot/Timetable
 """
-import asyncio
-from email.headerregistry import Group
-from multiprocessing.sharedctypes import Value
-import random
-import re
+import asyncio, random, re, hikari, tanjun, datetime, validators
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from PIL import Image
-import hikari
 from humanfriendly import format_timespan
 from tanjun import Client
-import tanjun, datetime
-
-import validators
 from lib.core.bot import bot, Bot
 from lib.utils import utilities as BotUtils
 from . import COG_LINK, COG_TYPE, DAYS_OF_WEEK
@@ -459,8 +451,6 @@ class Timetable():
                 GroupIDs = (GroupIDs,) # Turns single input into tuple
             GroupIDs = tuple(map(str,GroupIDs)) # Turns all elements to strings)
         # Get timetable from GroupIDs
-        
-        
         # Gets timetable
         if DatetimeInput is None:
             Lessons = db.records(f"SELECT * FROM Lessons WHERE GroupID IN (?) ORDER BY DayOfWeek ASC, StartTime ASC",(','.join(GroupIDs)))
@@ -478,14 +468,15 @@ class Timetable():
         else:
             return Lessons
         
-    def get_non_holiday_lessons_from_GroupIDs(self,GroupIDs: tuple[str] | str,DatetimeInput: datetime.datetime) -> list | None:
+    def get_non_holiday_lessons_from_GroupIDs(self,GroupIDs: tuple[int] | str,DatetimeInput: datetime.datetime) -> list | None:
         """
         Gets tuple of groupIDs and a datetime, will return any lessons
         that aren't during a holiday or None if there aren't any
         """
-   
-        Lessons = db.records(f"SELECT * FROM Lessons WHERE GroupID IN (?) AND DayOfWeek = ? ORDER BY StartTime ASC",(','.join(GroupIDs)),DatetimeInput.weekday())
-        Holidays = db.records(f"SELECT * FROM Holidays WHERE GroupID IN (?)",(','.join(GroupIDs)))
+        GroupIDs = tuple(map(int,GroupIDs))
+        GroupIDs = f"({GroupIDs[0]})" if len(GroupIDs) == 1 else GroupIDs
+        Lessons = db.records(f"SELECT * FROM Lessons WHERE GroupID IN {GroupIDs} AND DayOfWeek = ? ORDER BY StartTime ASC",DatetimeInput.weekday())
+        Holidays = db.records(f"SELECT * FROM Holidays WHERE GroupID IN {GroupIDs}")
         # Checks for any holidays
         for Holiday in Holidays:
             HolidayGroupID = Holiday[1]
@@ -507,12 +498,12 @@ class Timetable():
         Will return a tuple of GroupIDs if found and None is the user isn't in
         any groups.
         """
-        GroupIDs = db.column("SELECT GroupID FROM Students WHERE UserID = ?",UserID)
+        GroupIDs = db.column("SELECT GroupID FROM Students WHERE UserID = ?",str(UserID))
         if GroupIDs == []:
             return None
         else:
-            GroupIDs = list(map(str,GroupIDs))
-            return GroupIDs[0]
+            GroupIDs = tuple(map(str,GroupIDs))
+            return GroupIDs
     
     def get_group_id_from_input(self,GroupInput) -> tuple | None:
         """
@@ -524,10 +515,10 @@ class Timetable():
         if GroupIDs == []:
             return None
         else:
-            GroupIDs = list(map(str,GroupIDs))
-            return GroupIDs[0]
+            GroupIDs = tuple(map(str,GroupIDs))
+            return GroupIDs
     
-    def get_next_lesson(self,GroupIDs: tuple[str] | str) -> tuple and datetime.datetime | None:
+    def get_next_lesson(self,GroupIDs: tuple[int] | str) -> tuple and datetime.datetime | None:
         """
         Uses the current datetime to find the next occourance of a lesson in a
         tuple of groups. 
@@ -536,7 +527,7 @@ class Timetable():
         """
         if not (isinstance(GroupIDs,tuple) or isinstance(GroupIDs, tuple)):
             GroupIDs = (GroupIDs,) # Turns single input into tuple
-        GroupIDs = list(map(str,GroupIDs)) # Turns all elements to strings
+        GroupIDs = tuple(map(str,GroupIDs)) # Turns all elements to strings
         
         CurrentDateTime = datetime.datetime.today()
         CurrentTime = CurrentDateTime.time()
