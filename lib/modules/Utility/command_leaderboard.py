@@ -10,6 +10,7 @@ from hikari.embeds import Embed
 from hikari.events.interaction_events import InteractionCreateEvent
 from hikari.interactions.base_interactions import ResponseType
 from hikari.messages import ButtonStyle
+from data.bot.data import INTERACTION_TIMEOUT
 from lib.core.bot import Bot
 from lib.core.client import Client
 from lib.utils.buttons import DELETE_ROW, EMPTY_ROW, PAGENATE_ROW
@@ -82,7 +83,7 @@ async def command_leaderboard_command(
     
     message = await ctx.respond(embed=embed, components=[PAGENATE_ROW,],ensure_result=True)
     try:
-        with bot.stream(InteractionCreateEvent, timeout=60).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
+        with bot.stream(InteractionCreateEvent, timeout=INTERACTION_TIMEOUT).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
             async for event in stream:
                 await event.interaction.create_initial_response(
                     ResponseType.DEFERRED_MESSAGE_UPDATE,

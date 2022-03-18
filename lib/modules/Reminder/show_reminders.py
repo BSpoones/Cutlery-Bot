@@ -9,6 +9,7 @@ import tanjun, hikari, math
 from tanjun.abc import Context as Context
 from hikari.events.interaction_events import InteractionCreateEvent
 from hikari.interactions.base_interactions import ResponseType
+from data.bot.data import INTERACTION_TIMEOUT
 from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import SlashContext as SlashContext
@@ -73,9 +74,9 @@ async def show_reminders_command(
     message = await ctx.fetch_initial_response()
     
     Bot.log_command(ctx,"showreminders",str(serveronly))
-    # Gives option to restore deleted reminder for up to 60 seconds
+    # Provides functionional buttons for the timeout length
     try:
-        with bot.stream(InteractionCreateEvent, timeout=60).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
+        with bot.stream(InteractionCreateEvent, timeout=INTERACTION_TIMEOUT).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
             async for event in stream:
                 await event.interaction.create_initial_response(
                     ResponseType.DEFERRED_MESSAGE_UPDATE,
