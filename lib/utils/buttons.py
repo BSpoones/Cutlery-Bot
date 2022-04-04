@@ -12,7 +12,13 @@ EMPTY_ROW = (
     .set_is_disabled(True)
     .add_to_container()
 )
-
+ONE_PAGE_ROW = (
+    hikari.impl.ActionRowBuilder()
+    .add_button(ButtonStyle.SECONDARY,"Expired")
+    .set_label("There is only one page")
+    .set_is_disabled(True)
+    .add_to_container()
+)
 
 DELETE_ROW = (
     hikari.impl.ActionRowBuilder()
