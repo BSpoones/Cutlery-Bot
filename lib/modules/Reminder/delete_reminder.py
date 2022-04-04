@@ -64,7 +64,8 @@ async def delete_reminder_command(ctx: SlashContext, id:int, bot: hikari.Gateway
             message = await ctx.create_initial_response(embed=embed,components=[UNDO_ROW])
         creator_user = await ctx.rest.fetch_user(creator_id)
         # Not giving creator option to undo deletion for a target to avoid abuse
-        await creator_user.send(f"<@{target_id}> has deleted the following reminder.",embed=embed)
+        if ctx.author.id != target_id:
+            await creator_user.send(f"<@{target_id}> has deleted the following reminder.",embed=embed)
     else:
         if private:
             message = await ctx.create_initial_response(embed=embed,flags=hikari.MessageFlag.EPHEMERAL,components=[UNDO_ROW])
