@@ -5,7 +5,7 @@ Solely for use in the Cutlery Bot discord bot
 Doccumentation: https://www.bspoones.com/Cutlery-Bot/Reminder#Show
 """
 
-import tanjun, hikari, math
+import tanjun, hikari, math, datetime
 from tanjun.abc import Context as Context
 from hikari.events.interaction_events import InteractionCreateEvent
 from hikari.interactions.base_interactions import ResponseType
@@ -13,7 +13,7 @@ from data.bot.data import INTERACTION_TIMEOUT
 from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import SlashContext as SlashContext
-from lib.utils.buttons import PAGENATE_ROW, EMPTY_ROW
+from lib.utils.buttons import ONE_PAGE_ROW, PAGENATE_ROW, EMPTY_ROW
 from . import COG_TYPE, COG_LINK,CB_REMINDER
 from ...db import db
 
@@ -60,17 +60,47 @@ async def show_reminders_command(
         reminders = db.records("SELECT * FROM Reminders WHERE GuildID = ? AND (CreatorID = ? OR TargetID = ?)",str(ctx.guild_id), str(ctx.author.id), str(ctx.author.id))
     else:
         reminders = db.records("SELECT * FROM Reminders WHERE CreatorID = ? OR TargetID = ?", str(ctx.author.id), str(ctx.author.id))
-    last_page = math.ceil(len(reminders)/amount)
+    # Sorting all reminders by date of next occourance
+    sorted_reminders = []
+    # Repeating (every day, weekday, DDMM)
+    repeating_reminders = []
+    for reminder in reminders:
+        reminder = list(reminder) # Since tuple will need to be added
+        if reminder[6] == "R":
+            next_reminder = CB_REMINDER.calculate_next_reminder(reminder)
+            reminder.append(next_reminder)
+            repeating_reminders.append(reminder)
+
+    # Sorting repeating reminders by datetime of next reminder sent
+    repeating_reminders_sorted = sorted(repeating_reminders,key=lambda x: x[13])
     
+    # YYYYMMDD
+    single_reminders = [x for x in reminders if x[6] == "S"]
+    single_reminders_sorted = []
+    for reminder in single_reminders:
+        reminder = list(reminder) # Since tuple will need to be added
+        reminder.append(datetime.datetime.strptime(f"{reminder[8]}{reminder[9]}","%Y%m%d%H%M%S"))
+        single_reminders_sorted.append(reminder)
+    single_reminders_sorted = sorted(single_reminders_sorted,key=lambda x: x[8])
+    
+    # Combining and sorting single and repeating reminders
+    sorted_reminders = sorted((single_reminders_sorted+repeating_reminders_sorted),key=lambda x: x[13])
+    last_page = math.ceil(len(reminders)/amount)
+    reminders = sorted_reminders
     if reminders == []:
         raise ValueError(f"You do not have any reminders {'in this server, set `serveronly` to False to view all reminders or' if serveronly else ','} use /remind to create a rmeinder.")
     # Formatting output message
     embed = build_page(ctx,reminders,page,amount,last_page)
+    # Deciding if there should be components on this message
+    if last_page == 1:
+        components = ONE_PAGE_ROW
+    else:
+        components = PAGENATE_ROW
     # Will send privately if serveronly is false
     if serveronly:
-        await ctx.create_initial_response(embed=embed,components=[PAGENATE_ROW])
+        await ctx.create_initial_response(embed=embed,components=[components])
     else:
-        await ctx.create_initial_response(embed=embed,flags=hikari.MessageFlag.EPHEMERAL,components=[PAGENATE_ROW])
+        await ctx.create_initial_response(embed=embed,flags=hikari.MessageFlag.EPHEMERAL,components=[components])
     message = await ctx.fetch_initial_response()
     
     Bot.log_command(ctx,"showreminders",str(serveronly))
