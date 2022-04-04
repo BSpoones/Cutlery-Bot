@@ -78,7 +78,7 @@ async def remind_every_command(
     match (str(type(target))):
         case "<class 'hikari.guilds.Role'>":
             target_type = "role"
-        case "<class 'hikari.interactions.base_interactions.InteractionMember'>":
+        case "<class 'hikari.interactions.base_interactions.InteractionMember'>" | "<class 'hikari.users.UserImpl'>":
             target_type = "user"
     if str(target) == "@everyone":
         target_id = str(target)[1:] # Removes the @
