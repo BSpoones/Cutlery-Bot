@@ -36,6 +36,7 @@ class Bot(hikari.GatewayBot):
         ).set_hooks(HOOKS)
         self.client.load_modules()
         self.client.metadata["start time"] = time.perf_counter()
+        self.client.metadata["permanent activity"] = False
     def run(self):
         self.create_client()
         
@@ -45,11 +46,13 @@ class Bot(hikari.GatewayBot):
     
     async def update_bot_presence(self):
         # Get guild count and guildID list
-        
-        guild_count = len(await self.rest.fetch_my_guilds())
-        member_count = sum(map(len, self.cache.get_members_view().values()))
+        if self.client.metadata["permanent activity"]:
+            pass
+        else:
+            guild_count = len(await self.rest.fetch_my_guilds())
+            member_count = sum(map(len, self.cache.get_members_view().values()))
 
-        await self.update_presence(status=hikari.Status.DO_NOT_DISTURB,activity=hikari.Activity(type=hikari.ActivityType.PLAYING, name=f"{ACTIVITY_NAME}{VERSION} | {member_count} users on {guild_count} servers"))
+            await self.update_presence(status=hikari.Status.DO_NOT_DISTURB,activity=hikari.Activity(type=hikari.ActivityType.PLAYING, name=f"{ACTIVITY_NAME}{VERSION} | {member_count} users on {guild_count} servers"))
 
     @classmethod
     def auto_embed(self,**kwargs):
