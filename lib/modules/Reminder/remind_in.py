@@ -19,17 +19,19 @@ remind_in_component = tanjun.Component()
 
 @remind_in_component.add_slash_command
 @tanjun.with_str_slash_option("todo","What do you want me to remind you")
-@tanjun.with_mentionable_slash_option("target","Who am i reminding?")
+@tanjun.with_mentionable_slash_option("target","Choose a user or a role to remind. Leave blank to remind yourself.", default=None)
 @tanjun.with_str_slash_option("when","How long until your reminder (y,mo,w,d,h,m,s) Examples: 4h15m10s = 4 hours 15 mins 10 seconds")
 @tanjun.with_bool_slash_option("private","Do you want this reminder to be in a private DM?", default=False)
 @tanjun.as_slash_command("remindin","Send a reminder in")
 async def remind_in_command(
     ctx: SlashContext, 
-    target: hikari.Role | hikari.InteractionMember | hikari.User,
+    target: hikari.Role | hikari.InteractionMember | hikari.User | None,
     when: str,
     todo: str,
     private: bool,
     ):
+    if target is None:
+        target = ctx.author
     MATCH_PATTERN =  "(?:([0-9]+)\s*y[a-z]*[,\s]*)?(?:([0-9]+)\s*mo[a-z]*[,\s]*)?(?:([0-9]+)\s*w[a-z]*[,\s]*)?(?:([0-9]+)\s*d[a-z]*[,\s]*)?(?:([0-9]+)\s*h[a-z]*[,\s]*)?(?:([0-9]+)\s*m[a-z]*[,\s]*)?(?:([0-9]+)\s*(?:s[a-z]*)?)?"
     VALIDATION_PATTERN = "^([0-9]+y)?([0-9]+y)?([0-9]+mo)?([0-9]+w)?([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s?)?$"
     # Input validation

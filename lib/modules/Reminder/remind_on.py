@@ -20,21 +20,23 @@ remind_on_component = tanjun.Component()
 
 @remind_on_component.add_slash_command
 @tanjun.with_str_slash_option("todo","What do you want me to remind you")
-@tanjun.with_mentionable_slash_option("target","Who am i reminding?")
+@tanjun.with_mentionable_slash_option("target","Choose a user or a role to remind. Leave blank to remind yourself.", default=None)
 @tanjun.with_str_slash_option("time","What time should i remind you? (HH:MM | HH:MM:SS 24 hour format)")
-@tanjun.with_str_slash_option("date","Choose a date to remind, EXAMPLES: Monday | 13/09 (DD/MM format) | 2022/02/01 (YYYY/MM/DD format)")
+@tanjun.with_str_slash_option("date","Choose a date to remind EXAMPLES: Tomorrow | Monday | 13/09 (DD/MM) | 2022/02/01 (YYYY/MM/DD)")
 @tanjun.with_bool_slash_option("private","Do you want this reminder to be in a private DM?", default=False)
 @tanjun.as_slash_command("remindon","Send a reminder on a specific date")
 async def remind_on_command(
     ctx: SlashContext, 
-    target: hikari.Role | hikari.InteractionMember | hikari.User,
+    target: hikari.Role | hikari.InteractionMember | hikari.User | None,
     date: str,
     time: str,
     todo: str,
     private: bool,
     ):
+    if target is None:
+        target = ctx.author
     # Input validation
-    # Date expects either a weekday | YYYYMMDD | MMDD format date
+    # Date expects either a "tomorrow" | weekday | YYYYMMDD | MMDD format date
     date = date.lower()
     short_date = date[:2].lower()
     current_date = datetime.datetime.today()
@@ -48,6 +50,9 @@ async def remind_on_command(
             n = (date - current_date.weekday()) % 7 # mod-7 ensures we don't go backward in time
             date_datetime = current_date + datetime.timedelta(days=n)
             date = date_datetime.strftime("%Y%m%d")
+    elif "tomorrow".startswith(short_date): # to (isn't a weekday but is for tomorrow)
+        date_datetime = current_date + datetime.timedelta(days=1)
+        date = date_datetime.strftime("%Y%m%d")
     else: # DDMM or YYYYMMDD validation
         date_nums = re.sub("[^0-9]","",date)
         if len(date_nums) == 4: # DDMM
@@ -100,10 +105,12 @@ async def remind_on_command(
     channel_id = ctx.channel_id
     reminder_type = "S"
     date_type = "YYYYMMDD"
+    
+    # Below is to check if the target is a user, role or @everyone. @here is unsupported because of discord's weird slash commands
     match (str(type(target))):
         case "<class 'hikari.guilds.Role'>":
             target_type = "role"
-        case "<class 'hikari.interactions.base_interactions.InteractionMember'>":
+        case "<class 'hikari.interactions.base_interactions.InteractionMember'>" | "<class 'hikari.users.UserImpl'>":
             target_type = "user"
     if str(target) == "@everyone":
         target_id = str(target)[1:] # Removes the @
@@ -111,6 +118,7 @@ async def remind_on_command(
         
     if str(type(target)) != "<class 'hikari.interactions.base_interactions.InteractionMember'>" and private: # Can't ping a role or @everyone in a private message
         raise ValueError("You cannot ping a role or @everyone privately.")
+    # Checks if the user is allowed to mention the role or @everyone
     
     db.execute(
         "INSERT INTO Reminders(CreatorID,TargetType,TargetID,GuildID,ChannelID,ReminderType,DateType,Date,Time,Todo,Private) VALUES (?,?,?,?,?,?,?,?,?,?,?)",

@@ -20,19 +20,21 @@ remind_every_component = tanjun.Component()
 
 @remind_every_component.add_slash_command
 @tanjun.with_str_slash_option("todo","What do you want me to remind you")
-@tanjun.with_mentionable_slash_option("target","Who am i reminding?")
+@tanjun.with_mentionable_slash_option("target","Choose a user or a role to remind. Leave blank to remind yourself.", default=None)
 @tanjun.with_str_slash_option("time","What time should i remind you? (HH:MM | HH:MM:SS 24 hour format)")
 @tanjun.with_str_slash_option("date","Choose a date to remind, EXAMPLES: Monday | Day | 13/09 (DD/MM format)")
 @tanjun.with_bool_slash_option("private","Do you want this reminder to be in a private DM?", default=False)
 @tanjun.as_slash_command("remindevery","Send a repeating reminder")
 async def remind_every_command(
     ctx: SlashContext, 
-    target: hikari.Role | hikari.InteractionMember | hikari.User,
+    target: hikari.Role | hikari.InteractionMember | hikari.User | None,
     date: str,
     time: str,
     todo: str,
     private: bool,
     ):
+    if target is None:
+        target = ctx.author
     # Input validation
     # Date expects either a weekday | "day" | MMDD format date
     date = date.lower()
