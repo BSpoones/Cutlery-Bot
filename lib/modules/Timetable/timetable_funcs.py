@@ -10,6 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 from PIL import Image
 from humanfriendly import format_timespan
 from tanjun import Client
+from data.bot.data import OWNER_IDS
 from lib.core.bot import bot, Bot
 from lib.utils import utilities as BotUtils
 from . import COG_LINK, COG_TYPE, DAYS_OF_WEEK
@@ -629,7 +630,16 @@ class Timetable():
         Converts a database datetime string into a datetime object
         """
         pass
-
+    def is_student_mod(self,ctx: tanjun.abc.Context, GroupID: int) -> bool:
+        UserID = ctx.author.id
+        if UserID in OWNER_IDS:
+            return True
+        StudentInfo = db.record("SELECT * FROM Students WHERE UserID = ? AND GroupID = ?",UserID,GroupID)
+        Moderator = StudentInfo[5]
+        if Moderator:
+            return True
+        else:
+            return False
 @tanjun.as_loader
 def load_components(client: Client):
     # Tanjun loader here as Client looks through every python
