@@ -5,7 +5,8 @@ Solely for use in the Cutlery Bot discord bot
 Doccumentation: https://www.bspoones.com/Cutlery-Bot/Admin#RestartBot
 """
 
-import tanjun, hikari, os
+from humanfriendly import format_timespan
+import tanjun, hikari, os, time
 from tanjun.abc import Context as Context
 from data.bot.data import OWNER_IDS
 from lib.core.bot import Bot
@@ -21,9 +22,13 @@ async def restartbot_command(
     bot: hikari.GatewayBot = tanjun.injected(type=hikari.GatewayBotAware)
     ):
     if ctx.author.id in OWNER_IDS:
+        uptime = format_timespan((time.perf_counter()-ctx.client.metadata["start time"]))
         embed = Bot.auto_embed(
             type="info",
-            title="Restarting...",
+            title="Restarting the bot...",
+            fields = [
+                ("Bot Uptime :stopwatch:",f"`{uptime}`",False)
+                ],
             ctx=ctx
         )
         await ctx.respond(embed)

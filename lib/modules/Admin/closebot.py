@@ -27,7 +27,7 @@ async def closebot_command(
             type="info",
             title="Closing the bot...",
             fields = [
-                ("Bot Uptime :stopwatch:",uptime,False)
+                ("Bot Uptime :stopwatch:",f"`{uptime}`",False)
                 ],
             ctx=ctx
         )
