@@ -12,6 +12,21 @@ EMPTY_ROW = (
     .set_is_disabled(True)
     .add_to_container()
 )
+ERROR_ROW = (
+    hikari.impl.ActionRowBuilder()
+    .add_button(ButtonStyle.PRIMARY, "NOTIFY")
+    .set_emoji("🔔")
+    .set_label("Notify BSpoones")
+    .add_to_container()
+)
+NOTIFIED_ROW = (
+    hikari.impl.ActionRowBuilder()
+    .add_button(ButtonStyle.PRIMARY, "NOTIFY-SENT")
+    .set_emoji("✅")
+    .set_label("Notification sent!")
+    .set_is_disabled(True)
+    .add_to_container()
+)
 ONE_PAGE_ROW = (
     hikari.impl.ActionRowBuilder()
     .add_button(ButtonStyle.SECONDARY,"Expired")
