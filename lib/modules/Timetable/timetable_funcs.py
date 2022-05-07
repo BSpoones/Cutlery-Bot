@@ -18,72 +18,6 @@ from . import COG_LINK, COG_TYPE, DAYS_OF_WEEK
 from ...db import db
 # All IDs (GroupID, UserID etc) to be standardised in CamelCase
 
-"""
-DATA STRUCTURE:
-
-Lesson table:
-
-0 LessonID
-1 GroupID
-2 TeacherID
-3 SubjectID
-4 DayOfWeek
-5 WeekNumber
-6 StartTime
-7 EndTime
-8 Room
-
-Groups table
-
-0 GroupID
-1 GroupOwnerID
-2 GroupName
-3 GroupCode
-4 GuildID
-5 RoleID
-6 PingRoleID
-7 RoleColour
-8 CategoryID
-9 AnnouncementID
-10 NLDayID
-11 NLTimeID
-12 ImageLink
-13 AlertTimes
-
-Teachers table
-
-0 TeacherID
-1 GroupID
-2 TeacherName
-3 TeacherColour
-4 TeacherLink
-5 LessonOnline
-
-Subjects table
-
-0 SubjectID
-1 TeacherID
-2 SubjectName
-3 SubjectColour
-
-Students table
-
-0 StudentID
-1 GroupID
-2 UserID
-3 Fullname
-4 Pings
-5 Moderator
-
-Holidays table
-
-0 HolidayID
-1 GroupID
-2 StartDate
-3 EndDate
-
-"""
-
 HM_FMT = "%H%M"
 HMS_FMT = "%H%M%S"
 ONLINE_THUMBNAIL = "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/934px-Google_Meet_icon_%282020%29.svg.png"
@@ -308,8 +242,8 @@ class Timetable():
         Holidays = db.records("SELECT * FROM Holidays WHERE GroupID = ?",str(GroupID))
         for holiday in Holidays:
 
-            StartDateTime: datetime = datetime.datetime.combine(holiday[2], datetime.time(0,0,0))
-            EndDateTime: datetime = datetime.datetime.combine(holiday[3], datetime.time(0,0,0))
+            StartDateTime: datetime = holiday[2]
+            EndDateTime: datetime = holiday[3]
 
             if StartDateTime<=DateTimeInput<=EndDateTime: # If current time is inbetween these dates
                 return True
@@ -323,13 +257,10 @@ class Timetable():
         This is similar to `is_datetime_in_holiday` but does not make any calls to the database and only
         checks one holiday at a time
         """
-        StartDateTime: datetime = datetime.datetime.combine(Holiday[2], datetime.time(0,0,0))
-        EndDateTime: datetime = datetime.datetime.combine(Holiday[3], datetime.time(0,0,0))
+        StartDateTime: datetime = Holiday[2]
+        EndDateTime: datetime = Holiday[3]
         
-        if StartDateTime<=DateTimeInput<=EndDateTime: # If current time is inbetween these dates
-            return True
-        else: # If there are no holidays or it's not in a holiday
-            return False
+        return StartDateTime<=DateTimeInput<=EndDateTime
     
     async def update_time_channels(self,GroupID: str):
         """
@@ -547,7 +478,7 @@ class Timetable():
                     it will not just remove all lessons if only one group is in a holiday
                     """
                     LessonsForDay = [x for x in LessonsForDay if x[1] != HolidayGroupID]
-                # NOTE: Add a thing here to set the current date to the end of a holiday to save processing time
+            # Skips to next day if no lessons are there anymore (e.g if it falls on a holiday for all group(s) involved)
             if LessonsForDay == []:
                 CurrentDateTime += datetime.timedelta(days=1)
                 CurrentTime = datetime.time(hour=0,minute=0,second=0)
@@ -625,21 +556,27 @@ class Timetable():
         """
         pass
     
-    def convert_db_datetime(self,db_input) -> datetime:
-        """
-        Converts a database datetime string into a datetime object
-        """
-        pass
     def is_student_mod(self,ctx: tanjun.abc.Context, GroupID: int) -> bool:
+        """
+        Checks the students table and sees if a student is a moderator for a given group
+        """
         UserID = ctx.author.id
         if UserID in OWNER_IDS:
             return True
         StudentInfo = db.record("SELECT * FROM Students WHERE UserID = ? AND GroupID = ?",UserID,GroupID)
         Moderator = StudentInfo[5]
-        if Moderator:
+        return Moderator
+    
+    def is_student_owner(self,ctx: tanjun.abc.Context, GroupID: int) -> bool:
+        """
+        Checks the groups table and sees if a student is the owner of a given group
+        """
+        UserID = ctx.author.id
+        if UserID in OWNER_IDS:
             return True
-        else:
-            return False
+        GroupInfo = db.record("SELECT * FROM Groups WHERE GroupID = ?",GroupID)
+        return UserID == GroupInfo[1]
+
 @tanjun.as_loader
 def load_components(client: Client):
     # Tanjun loader here as Client looks through every python
