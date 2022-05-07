@@ -37,7 +37,6 @@ def is_trusted(ctx: Context) -> bool:
 
 async def update_bot_presence(bot: hikari.GatewayBot):
         # Get guild count and guildID list
-        print(bot.client.metadata)
         if bot.client.metadata["permanent activity"]:
             pass
         else:

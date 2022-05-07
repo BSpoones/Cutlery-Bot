@@ -27,8 +27,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
     activity = (target.get_presence().activities[0])
     try:
         # Activity string
-        activity_str = ""
-        activity_str += ("**" + str(activity.type).split(".")[-1].title() + "**: " if activity else "")
+        activity_str = "**" + str(activity.type).split(".")[-1].title() + "**: " if activity else ""
         activity_str += activity.emoji.__str__() + " " if activity.emoji else ''
         activity_str += "`"+activity.state+"`" if activity.state is not None else "`"+activity.name+"`"
     except:
