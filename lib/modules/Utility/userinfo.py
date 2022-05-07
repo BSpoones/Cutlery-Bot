@@ -1,6 +1,6 @@
 """
 /userinfo command
-Developed by Bspoones - Dec 2021
+Developed by Bspoones - Dec 2021 - May 2022
 Solely for use in the Cutlery Bot discord bot
 Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility#Userinfo
 """
@@ -17,10 +17,26 @@ userinfo_create_component = tanjun.Component()
 @tanjun.as_slash_command("userinfo","Shows the information on a selected user")
 async def user_info_command(ctx: Context, target: hikari.Member):
     target = target or ctx.member
+    # try:
+    """
+    Activity.state = Activity name
+    Activity.type = Playing | Custom.etc
+    Activity.emoji = emoji
+    Activity.name = Bot activity | "Custom Status"
+    """
+    activity = (target.get_presence().activities[0])
     try:
-        activity = (target.get_presence().activities[0])
+        # Activity string
+        activity_str = ""
+        activity_str += ("**" + str(activity.type).split(".")[-1].title() + "**: " if activity else "")
+        activity_str += activity.emoji.__str__() + " " if activity.emoji else ''
+        activity_str += "`"+activity.state+"`" if activity.state is not None else "`"+activity.name+"`"
     except:
         activity = None
+        activity_str = ""
+    if activity_str == "":
+        activity_str = "N/A"
+    
     roles = (await target.fetch_roles())[1:]  # All but @everyone.
     roles = roles[::-1]
     top_role = target.get_top_role()
@@ -44,17 +60,16 @@ async def user_info_command(ctx: Context, target: hikari.Member):
             ("Roles",(f"{' | '.join(r.mention for r in roles) if len(roles) > 0 else 'No roles'}"), False),
             (
                 "Activity", 
-                # Not my proudest work below but it works
-                f"**{str(activity.type).split('.')[-1].title() if activity else 'N/A'}** {('`'+activity.state+'`' if activity.state is not None else '`'+activity.name+'`') if activity else ''}", 
+                activity_str,
                 False
             ),
-            ("Bot?", target.is_bot, True),
+            ("Human / Bot?", f"{'Bot' if target.is_bot else 'Human'}", True),
             ("ID", target.id, True),
             ("Status", f"{status_emoji} {status.capitalize()}", True),
             
             ("Created on", f"<t:{created_at}:d> \n:clock1: <t:{created_at}:R>", True),
             ("Joined on", f"<t:{joined_at}:d> \n:clock1: <t:{joined_at}:R>", True),
-            ("Boosted", bool(target.premium_since), True)
+            ("Boosted", f"{'Yes' if bool(target.premium_since) else 'No'}", True)
             ]
 
     embed = Bot.auto_embed(
