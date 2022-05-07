@@ -33,6 +33,10 @@ async def remind_on_command(
     todo: str,
     private: bool,
     ):
+    if private == False:
+        private = 0
+    else:
+        private = 1
     if target is None:
         target = ctx.author
     # Input validation

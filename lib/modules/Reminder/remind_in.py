@@ -41,7 +41,10 @@ async def remind_in_command(
     match = time_pattern.match(when)
     
     years, months, weeks, days, hours, minutes, seconds = 0,0,0,0,0,0,0
-    
+    if private == False:
+        private = 0
+    else:
+        private = 1
     if match.group(1) is not None:
         years = match.group(1)
     if match.group(2) is not None:
