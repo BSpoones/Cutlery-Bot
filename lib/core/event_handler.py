@@ -2,6 +2,7 @@ import hikari, tanjun, logging
 from hikari.events.base_events import ExceptionEvent
 
 from data.bot.data import VERSION
+from lib.utils.utilities import update_bot_presence
 
 
 class EventHandler():
@@ -18,7 +19,7 @@ class EventHandler():
             hikari.MemberDeleteEvent: self.on_member_leave,
             hikari.MessageCreateEvent: self.on_message,
         }
-
+        update_bot_presence(self.bot)
     def subscribe_to_events(self):
         for key,value in self.subscriptions.items():
             self.bot.event_manager.subscribe(key,value)
@@ -30,7 +31,7 @@ class EventHandler():
         logging.info("Starting Cutlery Bot.....")
     async def on_started(self, event: hikari.StartedEvent):
         logging.info(f"Cutlery bot v{VERSION} Loaded!")
-        await self.bot.update_bot_presence()
+        await update_bot_presence(self.bot)
         
 
         
@@ -41,26 +42,19 @@ class EventHandler():
         logging.info("Cutlery Bot Stopped!")
         
     async def on_guild_join(self, event):
-        await self.bot.update_bot_presence()
+        await update_bot_presence(self.bot)
 
     async def on_guild_leave(self, event):
-        await self.bot.update_bot_presence()
+        await update_bot_presence(self.bot)
         
     async def on_member_join(self, event):
-        await self.bot.update_bot_presence()
+        await update_bot_presence(self.bot)
         
     async def on_member_leave(self, event):
-        await self.bot.update_bot_presence()
+        await update_bot_presence(self.bot)
         
     async def on_message(self,event: hikari.MessageCreateEvent):
-        # if event.author.is_bot:
-            # return
-        try:
-            if event.embeds != []:
-                logging.info(event.embeds)
-        except:
-            pass
-        logging.info(f"{event.author} typed: {event.content}")
+        pass
     async def on_message_edit(self):
         pass
     async def on_message_delete(self):
