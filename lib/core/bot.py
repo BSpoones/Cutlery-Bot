@@ -42,9 +42,6 @@ class Bot(hikari.GatewayBot):
         
         self.event_handler.subscribe_to_events()
         super().run()
-        self.update_bot_presence()
-    
-    
 
     @classmethod
     def auto_embed(self,**kwargs):
