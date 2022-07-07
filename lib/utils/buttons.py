@@ -2,7 +2,6 @@ import hikari
 from hikari.messages import ButtonStyle
 
 
-
 DELETE_CUSTOM_ID = "AUTHOR_DELETE_BUTTON"
 
 EMPTY_ROW = (
