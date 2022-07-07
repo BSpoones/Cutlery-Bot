@@ -43,8 +43,8 @@ An unfinished command will have the prefix `NF` in the commands table
 | `NF` Storytime | | Uses natural language processing to create a randomly generated story |
 | `NF` Help | [module / command] | Shows information about a chosen command or module |
 | Close bot | | Closes the bot |
-| `NF` Restart bot | | Restarts the bot |
-| `NF` Setactivity | (activity type) (activity) | Sets the activity for the bot |
+| Restart bot | | Restarts the bot |
+| Setactivity | (activity type) (activity) | Sets the activity for the bot |
 | Schedule | [day] [group] | Shows your schedule for a given day |
 | Next lesson | [group] | Shows the next lesson for you or a given group|
 | Current lesson | [group] | Shows the current lesson for you or a given group |
