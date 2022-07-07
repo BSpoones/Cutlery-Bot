@@ -5,7 +5,7 @@ Solely for use in the Cutlery Bot discord bot
 Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility#BotInfo
 """
 
-import tanjun, time, os, platform
+import tanjun, time, os, platform, hikari
 from hikari import __version__ as hikari_version
 from hikari.messages import ButtonStyle
 from tanjun import __version__ as tanjun_version
@@ -40,7 +40,8 @@ async def botinfo_command(ctx: Context):
     files = []
     for r, d, f in os.walk(os.getcwd()):
         for file in f:
-            if file.endswith(".py"):
+            
+            if file.endswith((".py",".sql")):
                 files.append(os.path.join(r, file))
     total_lines = 0
     for file in files:
@@ -48,7 +49,12 @@ async def botinfo_command(ctx: Context):
             num_lines = sum(1 for line in open(file,encoding="utf8"))
             total_lines += num_lines
     commands_count = db.count("SELECT COUNT(Command) FROM CommandLogs") + 1 # Adding one since this is also a command sent
-
+    members_set = set()
+    members_list = (ctx.cache.get_members_view().values())
+    for guild in members_list:
+        for id in guild:
+            members_set.add(id)
+    member_count = len(members_set) # Unique users  
     fields = [
         ("Owner <a:spoongif:732758190734835775>","<@724351142158401577>",False),
         ("Cutlery Bot version",BOT_VERSION, True),
@@ -65,7 +71,7 @@ async def botinfo_command(ctx: Context):
         ("CPU speed",f"{(cpu_freq().max):.0f} MHz",True),
         (
             "Users",
-            f"{sum(len(record) for record in ctx.cache.get_members_view().values()):,}",
+            f"{member_count:,}",
             True
         ),
         (
