@@ -82,8 +82,7 @@ async def remind_in_command(
     if str(target) == "@everyone":
         target_id = str(target)[1:] # Removes the @
         target_type = "text"
-        
-    if str(type(target)) != "<class 'hikari.interactions.base_interactions.InteractionMember'>" and private: # Can't ping a role or @everyone in a private message
+    if str(type(target)) not in ("<class 'hikari.users.UserImpl'>","<class 'hikari.interactions.base_interactions.InteractionMember'>") and private: # Can't ping a role or @everyone in a private message
         raise ValueError("You cannot ping a role or @everyone privately.")
         
     group_id = str(ctx.guild_id)
