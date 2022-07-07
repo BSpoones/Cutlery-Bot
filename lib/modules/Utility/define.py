@@ -20,7 +20,6 @@ define_component = tanjun.Component()
 @tanjun.with_str_slash_option("word","Choose a word to get the definition for")
 @tanjun.as_slash_command("define","Gets the definition of a word")
 async def define_command(ctx: Context, word: str):
-    definition = PyDictionary.meaning(word)
     await ctx.respond( # Wait message
         embed = Bot.auto_embed(
             type="info",
@@ -31,6 +30,8 @@ async def define_command(ctx: Context, word: str):
             ctx=ctx
         )
     )
+    
+    definition = PyDictionary.meaning(word)
     if definition is not None:
         fields = []
         for item in definition.items():
@@ -54,7 +55,7 @@ async def define_command(ctx: Context, word: str):
             description="Cannot find that word, it may not exist in the dictionary but please check the spelling.",
             ctx=ctx
         )
-    await ctx.edit_initial_response(content=None,embed=embed)
+    await ctx.edit_initial_response(embed=embed)
     Bot.log_command(ctx,"define",word)
 
 
