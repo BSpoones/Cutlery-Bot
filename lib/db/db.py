@@ -1,12 +1,15 @@
+from tracemalloc import start
 from mysql.connector import connect
 from os.path import isfile
 import json, logging, datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from mysql.connector.errors import OperationalError
-import mysql
+import mysql, timeit, time
 from mysql.connector.cursor import CursorBase
 from mysql.connector import MySQLConnection
+from data.bot.data import EVENT_TYPES
+
 with open("./secret/dbCredentials.json") as f:
     dbCredentials = json.load(f)
     host = dbCredentials["host"]
@@ -218,11 +221,19 @@ def multiexec(command, valueset):
 
 
 def scriptexec(path):
-	
-
 	with open(path, "r", encoding="utf-8") as script:
 		script_list = script.read().split(";")
 		for script in script_list:
 			cur.execute(script)
 build()
 
+def insert_hikari_events():
+	possible_events = EVENT_TYPES
+	LogActions = column("SELECT ActionName FROM LogAction")
+	if sorted(LogActions) != sorted(possible_events): # Oh no- they're not the same!?! big sad
+		logging.info("Adding new log actions to database")
+		for event in possible_events:
+			if event not in LogActions:
+				execute("INSERT INTO LogAction(ActionName) VALUES (?)",event)
+				logging.info(f"{event} added.")
+		commit()
