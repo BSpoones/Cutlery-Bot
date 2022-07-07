@@ -41,6 +41,14 @@ async def update_bot_presence(bot: hikari.GatewayBot):
             pass
         else:
             guild_count = len(await bot.rest.fetch_my_guilds())
-            member_count = sum(map(len, bot.cache.get_members_view().values()))
-
+            # member_count = sum(map(len, bot.cache.get_members_view().values())) # Total users, with duplicates
+            
+            # Used to find the total amount of unique members in all servers containing Cutlery Bot
+            members_set = set()
+            members_list = (bot.cache.get_members_view().values())
+            for guild in members_list:
+                for id in guild:
+                    members_set.add(id)
+            member_count = len(members_set) # Unique users       
+            
             await bot.update_presence(status=hikari.Status.DO_NOT_DISTURB,activity=hikari.Activity(type=hikari.ActivityType.PLAYING, name=f"{ACTIVITY_NAME}{VERSION} | {member_count} users on {guild_count} servers"))
