@@ -100,4 +100,26 @@ CREATE TABLE IF NOT EXISTS CommandLogs(
     Command text,
     Args text DEFAULT NULL,
     TimeSent timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Stores valid log actions
+CREATE TABLE IF NOT EXISTS LogAction (
+  ActionID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  ActionName VARCHAR(36) NOT NULL UNIQUE
+);
+
+-- Stores channel instances
+CREATE TABLE IF NOT EXISTS LogChannel (
+  LogChannelID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  GuildID BIGINT(18) UNSIGNED NOT NULL,
+  ChannelID BIGINT(18) UNSIGNED NOT NULL UNIQUE
+);
+
+-- Stores the actions which should be logged within each channel
+CREATE TABLE IF NOT EXISTS ChannelLogAction (
+  ChannelID BIGINT(18) UNSIGNED NOT NULL,
+  ActionID BIGINT(18) UNSIGNED NOT NULL,
+  FOREIGN KEY (ChannelID) REFERENCES LogChannel (ChannelID) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (ActionID) REFERENCES LogAction (ActionID) ON DELETE CASCADE ON UPDATE CASCADE,
+  PRIMARY KEY (ChannelID, ActionID)
 )
