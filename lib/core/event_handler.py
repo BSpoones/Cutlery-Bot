@@ -1,10 +1,10 @@
-import hikari, tanjun, logging
+import hikari, tanjun, logging, time
 from hikari.events.base_events import ExceptionEvent
-
-from data.bot.data import VERSION
+from data.bot.data import VERSION, OUTPUT_CHANNEL
 from lib.utils.utilities import update_bot_presence
-from lib.modules.Logging.logging_funcs import test
+from lib.modules.Logging import logging_funcs
 from ..db import db
+from lib.modules.Logging import COG_LINK, COG_TYPE
 class EventHandler():
     def __init__(self, bot: hikari.GatewayBot):
         self.bot = bot
@@ -64,6 +64,7 @@ class EventHandler():
             hikari.VoiceServerUpdateEvent : self.on_voice_server_update_event,
             
         }
+    
     def subscribe_to_events(self):
         logging.info("Adding events to event manager")
         for key,value in self.subscriptions.items():
@@ -89,15 +90,63 @@ class EventHandler():
         
     # Guild events
 
+    # NOTE: The following events only affect the bot and therefore are set at a base level
     async def on_guild_join_event(self, event: hikari.GuildJoinEvent):
         await update_bot_presence(self.bot)
+        embed = self.bot.auto_embed(
+            type="Logging",
+            author=COG_TYPE,
+            author_url = COG_LINK,
+            title = f"Joined {event.guild.name}",
+            description = f"Members: {event.guild.member_count}\nOwner: <@{event.guild.owner_id}>",
+            colour = hikari.Colour(0x00FF00)
+        )
+        await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
+        
     async def on_guild_unavailable_event(self, event: hikari.GuildUnavailableEvent):
-        pass
+        guild = await event.fetch_guild()
+        embed = self.bot.auto_embed(
+            type="Logging",
+            author=COG_TYPE,
+            author_url = COG_LINK,
+            title = f"{guild.name} is unavailable",
+            description = f"An outage has caused this server to be unavailable.",
+            colour = hikari.Colour(0x990000)
+        )
+        await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
+        
     async def on_guild_avalaible_event(self, event: hikari.GuildAvailableEvent):
-        pass
+        uptime = ((time.perf_counter()-self.bot.client.metadata["start time"]))
+        if uptime < 60:
+            # Prevents all guilds running this function when bot starts up
+            return
+        guild = await event.fetch_guild()
+        embed = self.bot.auto_embed(
+            type="Logging",
+            author=COG_TYPE,
+            author_url = COG_LINK,
+            title = f"{guild.name} is now available",
+            description = f"This server is now available.",
+            colour = hikari.Colour(0x023020)
+        )
+        await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
+    
     async def on_guild_leave_event(self, event: hikari.GuildLeaveEvent):
         await update_bot_presence(self.bot)
+        embed = self.bot.auto_embed(
+            type="Logging",
+            author=COG_TYPE,
+            author_url = COG_LINK,
+            title = f"Left {event.old_guild.name}",
+            description = f"Members: {event.old_guild.member_count}\nOwner: <@{event.old_guild.owner_id}>",
+            colour = hikari.Colour(0xFF0000)
+            
+        )
+        await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
+    
+    # The following are events that a server can be aware of
     async def on_guild_update_event(self, event: hikari.GuildUpdateEvent):
+        # Unused for now
         pass
     async def on_ban_create_event(self, event: hikari.BanCreateEvent):
         pass
@@ -167,7 +216,7 @@ class EventHandler():
     
     # Reaction events
     async def on_guild_reaction_create_event(self, event: hikari.GuildReactionAddEvent):
-        pass
+        await logging_funcs.guild_reaction_add(self.bot,event)
     async def on_guild_reaction_delete_event(self, event: hikari.GuildReactionDeleteEvent):
         pass
     async def on_DM_reaction_create_event(self, event: hikari.DMReactionAddEvent):
@@ -181,7 +230,7 @@ class EventHandler():
     
     # Role events
     async def on_role_create_event(self, event: hikari.RoleCreateEvent):
-        pass
+        await logging_funcs.role_create(self.bot, event)
     async def on_role_update_event(self, event: hikari.RoleUpdateEvent):
         pass
     async def on_role_delete_event(self, event: hikari.RoleDeleteEvent):
@@ -214,40 +263,3 @@ class EventHandler():
         pass
     async def on_voice_server_update_event(self, event: hikari.VoiceServerUpdateEvent):
         pass
-    
-    
-    # async def on_member_join(self, event: hikari.MemberCreateEvent):
-    #     await update_bot_presence(self.bot)
-    
-    # async def on_member_updated(self, event: hikari.MemberUpdateEvent):
-    #     pass
-
-    # async def on_member_leave(self, event: hikari.MemberDeleteEvent):
-    #     print(event.user)
-    #     await update_bot_presence(self.bot)
-        
-    # async def on_message_edit(self, event: hikari.MessageUpdateEvent):
-    #     pass
-    # async def on_message_delete(self, event: hikari.MessageDeleteEvent):
-    #     pass
-    # async def on_message_bulk_delete(self, event: hikari.GuildBulkMessageDeleteEvent):
-    #     pass
-    
-    
-    
-    # async def on_role_create(self, event: hikari.RoleCreateEvent):
-    #     pass
-    # async def on_role_edit(self, event: hikari.RoleUpdateEvent):
-    #     pass
-    # async def on_role_delete(self, event: hikari.RoleDeleteEvent):
-    #     pass
-    
-    # async def on_reaction_create(self,event: hikari.ReactionAddEvent):
-    #     print("Reaction created")
-    # async def on_reaction_remove(self,event: hikari.ReactionDeleteEvent):
-    #     print("Reaction removed")
-    # async def on_reaction_remove_all(self,event: hikari.ReactionDeleteAllEvent):
-    #     print("All reactions removed")
-    #     print()
-    # async def on_reaction_remove_emoji(self,event: hikari.ReactionDeleteEmojiEvent):
-    #     print("Reaction removed?!?")
