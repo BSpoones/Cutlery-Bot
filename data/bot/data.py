@@ -6,6 +6,7 @@ with open("./data/bot/BotInfo.json") as f:
     ACTIVITY_NAME = BOT_INFO["activity name"]
     TRUSTED_IDS = BOT_INFO["trusted ids"]
     OWNER_IDS = BOT_INFO["owner ids"]
+    OUTPUT_CHANNEL = BOT_INFO["output channel"]
     INTERACTION_TIMEOUT = BOT_INFO["interaction timeout"]
     EVENT_TYPES = BOT_INFO["event types"]
         
