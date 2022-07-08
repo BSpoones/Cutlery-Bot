@@ -1,6 +1,6 @@
 /*
 Database configuration for Cutlery Bot
-Developed by BSpoones  Nov 21 - Feb 22
+Developed by BSpoones  Nov 21 - 
 Solely for use in the Cutlery Bot discord bot
 */
 
@@ -111,15 +111,15 @@ CREATE TABLE IF NOT EXISTS LogAction (
 -- Stores channel instances
 CREATE TABLE IF NOT EXISTS LogChannel (
   LogChannelID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  GuildID BIGINT(18) UNSIGNED NOT NULL,
-  ChannelID BIGINT(18) UNSIGNED NOT NULL UNIQUE
+  GuildID VARCHAR(18)  NOT NULL,
+  ChannelID VARCHAR(18)  NOT NULL UNIQUE
 );
 
 -- Stores the actions which should be logged within each channel
 CREATE TABLE IF NOT EXISTS ChannelLogAction (
-  ChannelID BIGINT(18) UNSIGNED NOT NULL,
+  LogChannelID BIGINT(20) UNSIGNED NOT NULL,
   ActionID BIGINT(18) UNSIGNED NOT NULL,
-  FOREIGN KEY (ChannelID) REFERENCES LogChannel (ChannelID) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (LogChannelID) REFERENCES LogChannel (LogChannelID) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (ActionID) REFERENCES LogAction (ActionID) ON DELETE CASCADE ON UPDATE CASCADE,
-  PRIMARY KEY (ChannelID, ActionID)
+  PRIMARY KEY (LogChannelID, ActionID)
 )
