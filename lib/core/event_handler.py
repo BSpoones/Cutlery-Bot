@@ -134,7 +134,7 @@ class EventHandler():
     async def on_guild_leave_event(self, event: hikari.GuildLeaveEvent):
         await update_bot_presence(self.bot)
         embed = self.bot.auto_embed(
-            type="Logging",
+            type="logging",
             author=COG_TYPE,
             author_url = COG_LINK,
             title = f"Left {event.old_guild.name}",
@@ -183,11 +183,11 @@ class EventHandler():
     
     # Member events
     async def on_member_create_event(self, event: hikari.MemberCreateEvent):
-        pass
+        await logging_funcs.on_member_create(self.bot,event)
     async def on_member_update_event(self, event: hikari.MemberUpdateEvent):
         pass
     async def on_member_delete_event(self, event: hikari.MemberDeleteEvent):
-        pass
+        await logging_funcs.on_member_delete(self.bot,event)
     
     # Message events
     async def on_guild_message_create_event(self, event: hikari.GuildMessageCreateEvent):
