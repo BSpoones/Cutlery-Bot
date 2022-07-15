@@ -89,7 +89,7 @@ class Bot(hikari.GatewayBot):
 
         if "colour" not in kwargs:
             match embed_type.lower():
-                case "default":
+                case "default" | "logging":
                     colour = hikari.Colour(0x2ecc71)
                 case "error":
                     colour = hikari.Colour(0xe74c3c)
@@ -101,7 +101,6 @@ class Bot(hikari.GatewayBot):
                     colour = get_colour_from_member(kwargs["member"])
                 case _:
                     if "member" in kwargs:
-                        print(kwargs["member"])
                         if kwargs["member"] is None:
                             colour = hikari.Colour(0x206694)
                         else:
@@ -164,7 +163,7 @@ class Bot(hikari.GatewayBot):
         ctx: Context = args[0]
         command = args[1]
         try:
-            cmd_args = " | ".join(args[2:])
+            cmd_args = " | ".join(str(args[2:]))
         except Exception as e:
             logging.error(f"ISSUE WITH LOG_COMMAND: {e}")
             cmd_args = None
