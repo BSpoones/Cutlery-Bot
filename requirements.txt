@@ -5,6 +5,6 @@ apscheduler
 python-dateutil
 psutil
 humanfriendly
-PyDictionary
+requests_async
 pillow
 validators
