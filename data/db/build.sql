@@ -101,7 +101,23 @@ CREATE TABLE IF NOT EXISTS CommandLogs(
     Args text DEFAULT NULL,
     TimeSent timestamp DEFAULT CURRENT_TIMESTAMP
 );
-
+CREATE TABLE IF NOT EXISTS MessageLogs (
+    GuildID VARCHAR(18) NOT NULL,
+    ChannelID VARCHAR(18) NOT NULL,
+    MessageID VARCHAR(18) PRIMARY KEY,
+    AuthorID VARCHAR(18) NOT NULL,
+    MessageContent TEXT(4000),
+    MessageReferenceID VARCHAR(18), -- Just a message id
+    Pinned BOOL NOT NULL,
+    TTS BOOL NOT NULL,
+    -- The following are JSON, but have to be formatted as a string
+    -- due to MySQL version limits
+    AttachmentsJSON TEXT, -- a list of attachment links
+    -- Components TEXT, NOTE: To be added later
+    EmbedsJSON TEXT,
+    ReactionsJSON TEXT, -- bunch of items, each item contains: the emoji name/id etc, and a list of memberids?
+    CreatedAt TIMESTAMP NOT NULL
+);
 -- Stores valid log actions
 CREATE TABLE IF NOT EXISTS LogAction (
   ActionID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
