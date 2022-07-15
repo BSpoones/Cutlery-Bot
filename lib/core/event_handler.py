@@ -191,7 +191,7 @@ class EventHandler():
     
     # Message events
     async def on_guild_message_create_event(self, event: hikari.GuildMessageCreateEvent):
-        pass
+        await logging_funcs.message_create(self.bot,event)
     async def on_guild_message_update_event(self, event: hikari.GuildMessageUpdateEvent):
         print(event.__class__.__name__)
         print(event.message.is_pinned)
