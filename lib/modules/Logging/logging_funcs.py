@@ -12,7 +12,7 @@ async def is_log_needed(event: str, guild_id: str) -> list[str] | str | None:
     for instance in logging_instances:
         LogChannelID = instance[0]
         ChannelLogAction = db.record("SELECT * FROM ChannelLogAction WHERE LogChannelID = ? AND ActionID = (SELECT ActionID from LogAction WHERE ActionName = ?)", LogChannelID,event)
-        if ChannelLogAction != []:
+        if ChannelLogAction:
             channel_ids.append(instance[2])
     
     if channel_ids == []:
