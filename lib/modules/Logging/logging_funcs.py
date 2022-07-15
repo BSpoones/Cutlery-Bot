@@ -1,12 +1,14 @@
 import tanjun, hikari, json, datetime
 from tanjun import Client
+
+from lib.modules.Logging import COG_LINK, COG_TYPE
 from ...db import db
 
 async def is_log_needed(event: str, guild_id: str) -> list[str] | str | None:
     """
     Checks if the event should be logged
     If the event should be logged, the func returns the channel ID(s) to log the event to
-    """
+    # """
     logging_instances = db.records("SELECT * FROM LogChannel WHERE GuildID = ?",str(guild_id))
     channel_ids = []
     for instance in logging_instances:
@@ -14,12 +16,10 @@ async def is_log_needed(event: str, guild_id: str) -> list[str] | str | None:
         ChannelLogAction = db.record("SELECT * FROM ChannelLogAction WHERE LogChannelID = ? AND ActionID = (SELECT ActionID from LogAction WHERE ActionName = ?)", LogChannelID,event)
         if ChannelLogAction:
             channel_ids.append(instance[2])
-    
     if channel_ids == []:
         return None
     else:
         return channel_ids           
-    
 
 async def ban_create():
     # Formats log message when a user in a guild is banned
@@ -85,8 +85,8 @@ async def message_create(bot: hikari.GatewayBot, event: hikari.MessageCreateEven
         Embed["color"] = embed.color.raw_hex_code if embed.color else None
         Embed["timestamp"] = int(embed.timestamp.timestamp()) if embed.timestamp else None
         Embed["footer"] = [
-            embed.footer.text,
-            embed.footer.icon.url if embed.footer.icon else None
+            embed.footer.text if embed.footer else None,
+            embed.footer.icon.url if embed.footer and embed.footer.icon else None
             ]
         Embed["image"] = embed.image.url if embed.image else None
         Embed["thumbnail"] = embed.thumbnail.url if embed.thumbnail else None
@@ -120,8 +120,54 @@ async def message_create(bot: hikari.GatewayBot, event: hikari.MessageCreateEven
         GuildID,ChannelID,MessageID,AuthorID,MessageContent,MessageReference,Pinned,TTS,AttachmentsJSON,EmbedsJSON,ReactionsJSON,CreatedAt
         )
     db.commit()
+
+
+# Member events
+async def on_member_create(bot: hikari.GatewayBot, event: hikari.MemberCreateEvent):
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    target = event.member
     
+    created_at = int(target.created_at.timestamp())
+
+    description = f"**Username:** {target.mention} ({str(target)})\n**Type:** `{'Bot' if target.is_bot else 'Human'}`\n**ID:** `{target.id}`\n**Created on:** <t:{created_at}:d> :clock1: <t:{created_at}:R>"
+
+    embed = bot.auto_embed(
+        type="logging",
+        author=COG_TYPE,
+        author_url = COG_LINK,
+        title = f"User Join",
+        description = description,
+        thumbnail=target.avatar_url,
+        colour = hikari.Colour(0x00FF00)
+        
+    )
+    if channels != None:
+        for channel in channels:
+            await bot.rest.create_message(channel,embed=embed)
+
+async def on_member_delete(bot: hikari.GatewayBot, event: hikari.MemberDeleteEvent):
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    target = event.old_member if event.old_member else event.user
     
+    # Role info will be added when the database for it is setup
+    created_at = int(target.created_at.timestamp())
+    # Joined at info will also be added when database for it is setup
+
+    description = f"**Username:** {target.mention} ({str(target)})\n**Type:** `{'Bot' if target.is_bot else 'Human'}`\n**ID:** `{target.id}`\n**Created on:** <t:{created_at}:d> :clock1: <t:{created_at}:R>"
+
+
+    embed = bot.auto_embed(
+        type="logging",
+        author=COG_TYPE,
+        author_url = COG_LINK,
+        title = f"User Leave",
+        description = description,
+        thumbnail=target.avatar_url,
+        colour = hikari.Colour(0xFF0000)
+    )
+    if channels != None:
+        for channel in channels:
+            await bot.rest.create_message(channel,embed=embed)
 @tanjun.as_loader
 def load_components(client: Client):
     # Tanjun loader here as Client looks through every python
