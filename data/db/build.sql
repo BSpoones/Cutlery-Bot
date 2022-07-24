@@ -18,17 +18,17 @@ CREATE TABLE IF NOT EXISTS Lessons (
 
 CREATE TABLE IF NOT EXISTS LessonGroups (
     GroupID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    GroupOwnerID VARCHAR(18),
+    GroupOwnerID VARCHAR(19),
     GroupName VARCHAR(50),
     GroupCode VARCHAR(50),
-    GuildID VARCHAR(18),
-    RoleID VARCHAR(18),
-    PingRoleID VARCHAR(18),
+    GuildID VARCHAR(19),
+    RoleID VARCHAR(19),
+    PingRoleID VARCHAR(19),
     RoleColour VARCHAR(7),
-    CaregoryID VARCHAR(18),
-    AnnouncementID VARCHAR(18),
-    NLDayID VARCHAR(18),
-    NLTimeID VARCHAR(18),
+    CaregoryID VARCHAR(19),
+    AnnouncementID VARCHAR(19),
+    NLDayID VARCHAR(19),
+    NLTimeID VARCHAR(19),
     ImageLink VARCHAR(256),
     AlertTimes VARCHAR(100)
 );
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS Subjects (
 CREATE TABLE IF NOT EXISTS Students (
     StudentID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     GroupID BIGINT(24),
-    UserID VARCHAR(18),
+    UserID VARCHAR(19),
     Fullname VARCHAR (100),
     Pings BOOL,
     Moderator BOOL
@@ -67,9 +67,9 @@ CREATE TABLE IF NOT EXISTS Holidays (
 
 CREATE TABLE IF NOT EXISTS Assignments(
     AssignmentID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    CreatorUserID VARCHAR(18),
-    GroupID VARCHAR(18),
-    TeacherID VARCHAR(18),
+    CreatorUserID VARCHAR(19),
+    GroupID VARCHAR(19),
+    TeacherID VARCHAR(19),
     DueDatetime datetime,
     AssignmentContent text,
     TimeSent timestamp DEFAULT CURRENT_TIMESTAMP
@@ -77,11 +77,11 @@ CREATE TABLE IF NOT EXISTS Assignments(
 
 CREATE TABLE IF NOT EXISTS Reminders (
     ReminderID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    CreatorID VARCHAR(18),
+    CreatorID VARCHAR(19),
     TargetType VARCHAR(4), -- role | user | text
-    TargetID VARCHAR(18),
-    GuildID VARCHAR(18),
-    ChannelID VARCHAR(18),
+    TargetID VARCHAR(19),
+    GuildID VARCHAR(19),
+    ChannelID VARCHAR(19),
     ReminderType VARCHAR(1), -- Either R or S (Repeating or single), 1 chars
     DateType VARCHAR(8), -- YYYYMMDD is the longest input with 8 chars
     Date VARCHAR(9), -- Wednesday is longest input with 9 chars
@@ -94,20 +94,20 @@ CREATE TABLE IF NOT EXISTS Reminders (
 
 CREATE TABLE IF NOT EXISTS CommandLogs(
     CommandLogID BIGINT(24) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    UserID VARCHAR(18),
-    GuildID VARCHAR(18),
-    ChannelID VARCHAR(18),
+    UserID VARCHAR(19),
+    GuildID VARCHAR(19),
+    ChannelID VARCHAR(19),
     Command text,
     Args text DEFAULT NULL,
     TimeSent timestamp DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS MessageLogs (
-    GuildID VARCHAR(18) NOT NULL,
-    ChannelID VARCHAR(18) NOT NULL,
-    MessageID VARCHAR(18) PRIMARY KEY,
-    AuthorID VARCHAR(18) NOT NULL,
+    GuildID VARCHAR(19) NOT NULL,
+    ChannelID VARCHAR(19) NOT NULL,
+    MessageID VARCHAR(19) PRIMARY KEY,
+    AuthorID VARCHAR(19) NOT NULL,
     MessageContent TEXT(4000),
-    MessageReferenceID VARCHAR(18), -- Just a message id
+    MessageReferenceID VARCHAR(19), -- Just a message id
     Pinned BOOL NOT NULL,
     TTS BOOL NOT NULL,
     -- The following are JSON, but have to be formatted as a string
@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS MessageLogs (
     ReactionsJSON TEXT, -- bunch of items, each item contains: the emoji name/id etc, and a list of memberids?
     CreatedAt TIMESTAMP NOT NULL
 );
+ALTER TABLE MessageLogs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- Stores valid log actions
 CREATE TABLE IF NOT EXISTS LogAction (
   ActionID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -127,14 +128,14 @@ CREATE TABLE IF NOT EXISTS LogAction (
 -- Stores channel instances
 CREATE TABLE IF NOT EXISTS LogChannel (
   LogChannelID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  GuildID VARCHAR(18)  NOT NULL,
-  ChannelID VARCHAR(18)  NOT NULL UNIQUE
+  GuildID VARCHAR(19)  NOT NULL,
+  ChannelID VARCHAR(19)  NOT NULL UNIQUE
 );
 
 -- Stores the actions which should be logged within each channel
 CREATE TABLE IF NOT EXISTS ChannelLogAction (
   LogChannelID BIGINT(20) UNSIGNED NOT NULL,
-  ActionID BIGINT(18) UNSIGNED NOT NULL,
+  ActionID BIGINT(19) UNSIGNED NOT NULL,
   FOREIGN KEY (LogChannelID) REFERENCES LogChannel (LogChannelID) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (ActionID) REFERENCES LogAction (ActionID) ON DELETE CASCADE ON UPDATE CASCADE,
   PRIMARY KEY (LogChannelID, ActionID)
