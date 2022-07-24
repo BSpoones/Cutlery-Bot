@@ -99,7 +99,7 @@ async def botinfo_command(ctx: Context):
 
     button = (
         ctx.rest.build_action_row()
-        .add_button(ButtonStyle.LINK, "http://bspoones.com/")
+        .add_button(ButtonStyle.LINK, "http://bspoones.com/Cutlery-Bot")
         .set_label("Website")
         .add_to_container()
         .add_button(ButtonStyle.LINK, "https://github.com/BSpoones/Cutlery-Bot")
