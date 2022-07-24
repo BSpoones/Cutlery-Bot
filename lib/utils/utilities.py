@@ -4,8 +4,11 @@ import datetime, hikari, tanjun
 
 def next_occourance_of_time(time_input: datetime.time) -> datetime.datetime:
     """
-    Takes a datetime.time object and returns a datetime object
-    of the next occourance of that time
+    Calculates the next occourance of a given time
+    
+    Returns
+    -------
+    datetime.datetime 
     """
     CurrentDatetime = datetime.datetime.today()
     CurrentTime = CurrentDatetime.time()
