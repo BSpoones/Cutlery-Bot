@@ -77,6 +77,7 @@ class EventHandler():
 
     async def on_starting(self, event: hikari.StartingEvent):
         logging.info("Starting Cutlery Bot.....")
+    
     async def on_started(self, event: hikari.StartedEvent):
         logging.info(f"Cutlery bot v{VERSION} Loaded!")
         await update_bot_presence(self.bot) 
@@ -93,6 +94,7 @@ class EventHandler():
     # NOTE: The following events only affect the bot and therefore are set at a base level
     async def on_guild_join_event(self, event: hikari.GuildJoinEvent):
         await update_bot_presence(self.bot)
+        print(event.guild.created_at)
         embed = self.bot.auto_embed(
             type="Logging",
             author=COG_TYPE,
@@ -109,8 +111,7 @@ class EventHandler():
             type="Logging",
             author=COG_TYPE,
             author_url = COG_LINK,
-            title = f"{guild.name} is unavailable",
-            description = f"An outage has caused this server to be unavailable.",
+            title = f"`{guild.name}` is unavailable",
             colour = hikari.Colour(0x990000)
         )
         await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
@@ -125,8 +126,7 @@ class EventHandler():
             type="Logging",
             author=COG_TYPE,
             author_url = COG_LINK,
-            title = f"{guild.name} is now available",
-            description = f"This server is now available.",
+            title = f"`{guild.name}` is now available",
             colour = hikari.Colour(0x023020)
         )
         await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
@@ -148,12 +148,15 @@ class EventHandler():
     async def on_guild_update_event(self, event: hikari.GuildUpdateEvent):
         # Unused for now
         pass
+    
     async def on_ban_create_event(self, event: hikari.BanCreateEvent):
-        pass
+        await logging_funcs.ban_create(self.bot,event)
+    
     async def on_ban_delete_event(self, event: hikari.BanDeleteEvent):
-        pass
+        await logging_funcs.ban_delete(self.bot,event)
+    
     async def on_emojis_update_event(self, event: hikari.EmojisUpdateEvent):
-        pass
+        await logging_funcs.emoji_update(self.bot,event)
     async def on_integration_create_event(self, event: hikari.IntegrationCreateEvent):
         pass
     async def on_integration_delete_event(self, event: hikari.IntegrationDeleteEvent):
@@ -165,11 +168,11 @@ class EventHandler():
     
     # Channel events
     async def on_guild_channel_create_event(self, event: hikari.GuildChannelCreateEvent):
-        pass
+        await logging_funcs.guild_channel_create(self.bot,event)
     async def on_guild_channel_edit_event(self, event: hikari.GuildChannelUpdateEvent):
-        pass
+        await logging_funcs.guild_channel_edit(self.bot,event)
     async def on_guild_channel_delete_event(self, event: hikari.GuildChannelDeleteEvent):
-        pass
+        await logging_funcs.guild_channel_delete(self.bot,event)
     async def on_guild_pins_update_event(self, event: hikari.GuildPinsUpdateEvent):
         pass
     async def on_DM_pins_update_event(self, event: hikari.DMPinsUpdateEvent):
