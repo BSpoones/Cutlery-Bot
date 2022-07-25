@@ -1,5 +1,5 @@
-from hashlib import new
-from pydoc import describe
+from humanfriendly import format_timespan
+import requests, logging
 import tanjun, hikari, json, datetime
 from tanjun import Client
 
@@ -294,17 +294,153 @@ async def guild_channel_delete(bot: hikari.GatewayBot, event: hikari.GuildChanne
         for channel in channels:
             await bot.rest.create_message(channel,embed=embed)
 
+
+
+# Reaction events
+
+async def guild_reaction_add(bot: hikari.GatewayBot, event: hikari.GuildReactionAddEvent):
+    remover_id = event.user_id
+    try:
+        # Default emoji
+        emoji_mention = event.emoji_name.mention
+        emoji_name = event.emoji_name
+        emoji = hikari.UnicodeEmoji.parse(emoji_mention)
+        is_animated = False
+    except:
+        # Custom emoji
+        emoji_name = event.emoji_name
+        emoji_id = event.emoji_id
+        emoji = hikari.CustomEmoji.parse(f"<a:{emoji_name}:{emoji_id}>")
+        status_code = requests.get(emoji.url).status_code
+        if status_code == 415:
+            # Means emoji is not animated
+            emoji = hikari.CustomEmoji.parse(f"<:{emoji_name}:{emoji_id}>")
+        is_animated = emoji.is_animated
+        
+    emoji_url = emoji.url
+    guild_id = event.guild_id
+    channel_id = event.channel_id
+    message_id = event.message_id
+    
+    message_link = f"https://discord.com/channels/{guild_id}/{channel_id}/{message_id}"
+
+    description = f"`{emoji_name}` has been added by <@{remover_id}>"
+    if is_animated:
+        emoji_url = emoji_url[:-3]+"gif"
+        embed = bot.auto_embed(
+            type="logging",
+            author=COG_TYPE,
+            author_url = COG_LINK,
+            title = f"Reaction added",
+            url = message_link,
+            description = description,
+            thumbnail = emoji_url,
+            colour = hikari.Colour(0x00FF00)
+            )
+    else:
+        embed = bot.auto_embed(
+        type="logging",
+        author=COG_TYPE,
+        author_url = COG_LINK,
+        title = f"Reaction added",
+        url = message_link,
+        description = description,
+        thumbnail = emoji_url,
+        colour = hikari.Colour(0x00FF00)
+        )
+    
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    if channels != None:
+        for channel in channels:
+             await bot.rest.create_message(channel,embed=embed)
+
+async def guild_reaction_remove(bot: hikari.GatewayBot,event:hikari.GuildReactionDeleteEvent):
+    remover_id = event.user_id
+    try:
+        # Default emoji
+        emoji_mention = event.emoji_name.mention
+        emoji_name = event.emoji_name
+        emoji = hikari.UnicodeEmoji.parse(emoji_mention)
+        is_animated = False
+    except:
+        # Custom emoji
+        emoji_name = event.emoji_name
+        emoji_id = event.emoji_id
+        emoji = hikari.CustomEmoji.parse(f"<a:{emoji_name}:{emoji_id}>")
+        status_code = requests.get(emoji.url).status_code
+        if status_code == 415:
+            # Means emoji is not animated
+            emoji = hikari.CustomEmoji.parse(f"<:{emoji_name}:{emoji_id}>")
+        is_animated = emoji.is_animated
+        
+    emoji_url = emoji.url
+    guild_id = event.guild_id
+    channel_id = event.channel_id
+    message_id = event.message_id
+    
+    message_link = f"https://discord.com/channels/{guild_id}/{channel_id}/{message_id}"
+
+    description = f"`{emoji_name}` has been removed by <@{remover_id}>"
+    if is_animated:
+        emoji_url = emoji_url[:-3]+"gif"
+        embed = bot.auto_embed(
+            type="logging",
+            author=COG_TYPE,
+            author_url = COG_LINK,
+            title = f"Reaction removed",
+            url = message_link,
+            description = description,
+            thumbnail = emoji_url,
+            colour = hikari.Colour(0xFF0000)
+            )
+    else:
+        embed = bot.auto_embed(
+        type="logging",
+        author=COG_TYPE,
+        author_url = COG_LINK,
+        title = f"Reaction removed",
+        url = message_link,
+        description = description,
+        thumbnail = emoji_url,
+        colour = hikari.Colour(0xFF0000)
+        )
+    
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    if channels != None:
+        for channel in channels:
+             await bot.rest.create_message(channel,embed=embed)
+
+async def guild_reaction_delete_all(bot: hikari.GatewayBot, event: hikari.GuildReactionDeleteAllEvent):
+    guild_id = event.guild_id
+    channel_id = event.channel_id
+    message_id = event.message_id
+    message_link = f"https://discord.com/channels/{guild_id}/{channel_id}/{message_id}"
+
+    embed = bot.auto_embed(
+        type="logging",
+        author=COG_TYPE,
+        author_url = COG_LINK,
+        title = f"All reactions removed",
+        url = message_link,
+        description = "All reactions have been removed from this message.",
+        colour = hikari.Colour(0xDC143C)
+        )
+    
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    if channels != None:
+        for channel in channels:
+             await bot.rest.create_message(channel,embed=embed)
+
+# Role events
+
 async def role_create(bot: hikari.GatewayBot, event: hikari.RoleCreateEvent):
     channels = await is_log_needed(event.__class__.__name__,event.guild_id)
     if channels != None:
         for channel in channels:
             await bot.rest.create_message(channel,content="Role has been created")
 
-async def guild_reaction_add(bot: hikari.GatewayBot, event: hikari.GuildReactionAddEvent):
-    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
-    if channels != None:
-        for channel in channels:
-             await bot.rest.create_message(channel,content=(f"{event.emoji_name} has been added to https://discord.com/channels/{event.guild_id}/{event.channel_id}/{event.message_id} by <@{event.member.id}>"))
+
+# Message events
 
 async def message_create(bot: hikari.GatewayBot, event: hikari.MessageCreateEvent):
     # Only Guilds that want to log messages will have them stored
@@ -349,7 +485,7 @@ async def message_create(bot: hikari.GatewayBot, event: hikari.MessageCreateEven
         Embed["title"] = embed.title
         Embed["description"] = embed.description
         Embed["url"] = embed.url
-        Embed["color"] = embed.color.raw_hex_code if embed.color else None
+        Embed["colour"] = embed.colour.raw_hex_code if embed.colour else None
         Embed["timestamp"] = int(embed.timestamp.timestamp()) if embed.timestamp else None
         Embed["footer"] = [
             embed.footer.text if embed.footer else None,
@@ -360,9 +496,9 @@ async def message_create(bot: hikari.GatewayBot, event: hikari.MessageCreateEven
         Embed["video"] = embed.video.url if embed.video else None
         # Skipping provider since it's of no use
         Embed["author"] = [
-            embed.author.name,
-            embed.author.url,
-            embed.author.icon.url if embed.author.icon else None
+            embed.author.name if embed.author else None,
+            embed.author.url if embed.author else None,
+            embed.author.icon.url if embed.author and embed.author.icon else None
             ] # Not to be confused with an author member object
         EmbedFields = []
         for field in embed.fields:
@@ -420,7 +556,7 @@ async def on_member_delete(bot: hikari.GatewayBot, event: hikari.MemberDeleteEve
         is_banned = False
     if is_banned:
         # General idea here is to only log a ban to a channel where both
-        #  leave and bans are logged
+        # leave and bans are logged
         # 2 lists, ban perms and join perms
         # If channelID is in both lists, then the channel in the ban log
         # Doessn't need to output a leave message
@@ -452,6 +588,184 @@ async def on_member_delete(bot: hikari.GatewayBot, event: hikari.MemberDeleteEve
     if leave_channels != None:
         for channel in leave_channels:
             await bot.rest.create_message(channel,embed=embed)
+
+# Voice events
+
+async def on_voice_state_update(bot: hikari.GatewayBot, event: hikari.VoiceStateUpdateEvent):
+    old_state = event.old_state
+    new_state = event.state
+    same_channel = (old_state.channel_id == new_state.channel_id) if old_state else False
+    
+    # VC join
+    if old_state is None:
+        # Assumes that a user has joined a vc or the cache doesn't have info
+        # Either way a join message should be sent
+        
+        # Assigning the join time
+        bot.client.metadata[f"VC_JOIN{new_state.guild_id}{new_state.user_id}"] = datetime.datetime.today().timestamp()
+        
+        title = "Voice channel join"
+        description = f"<@{new_state.user_id}> joined <#{new_state.channel_id}>"
+        # Checking for mutes and deafens
+        if any(
+            (
+            new_state.is_guild_deafened,
+            new_state.is_guild_muted,
+            new_state.is_self_deafened,
+            new_state.is_self_muted
+            )
+        ):
+            fields = []
+            name = f":mute: **This user has the following:**"
+            value = ""
+            if new_state.is_guild_deafened:
+                value += f"\n - Guild deafen"
+            if new_state.is_guild_muted:
+                value += f"\n - Guild mute"
+            if new_state.is_self_deafened:
+                value += f"\n - Self deafen"
+            if new_state.is_self_muted:
+                value += f"\n - Self mute"
+            fields.append((name,value,False))
+        else:
+            fields = []
+        colour_hex = 0x00FF00
+    
+    # VC leave
+    elif new_state.channel_id is None and old_state.channel_id is not None:
+        title = "Voice channel leave"
+        description = f"<@{new_state.user_id}> left <#{old_state.channel_id}>"
+        try:
+            join_time = bot.client.metadata[f"VC_JOIN{new_state.guild_id}{new_state.user_id}"]
+            bot.client.metadata.pop(f"VC_JOIN{new_state.guild_id}{new_state.user_id}")
+            total_voicetime = datetime.datetime.today().timestamp() - join_time
+            total_voicetime_formatted = format_timespan(total_voicetime)
+            description += f"\n\nTime in channel: `{total_voicetime_formatted}`"
+        except KeyError:
+            logging.debug("No join time found")
+    
+        colour_hex = 0xFF0000
+        target = new_state.member
+        fields = []
+    
+    # VC transfer
+    elif new_state.channel_id != old_state.channel_id:
+        join_time = bot.client.metadata[f"VC_JOIN{new_state.guild_id}{new_state.user_id}"]
+        title = "Voice channel transfer"
+        description = f"<@{new_state.user_id}> transfered to another channel.\n\n<#{old_state.channel_id}> :fast_forward: <#{new_state.channel_id}>"
+        try:
+            join_time = bot.client.metadata[f"VC_JOIN{new_state.guild_id}{new_state.user_id}"]
+            bot.client.metadata.pop(f"VC_JOIN{new_state.guild_id}{new_state.user_id}")
+            total_voicetime = datetime.datetime.today().timestamp() - join_time
+            total_voicetime_formatted = format_timespan(total_voicetime)
+            description += f"\n\nTime in <#{old_state.channel_id}>: `{total_voicetime_formatted}`"
+        except KeyError:
+            logging.debug("No join time found")
+        bot.client.metadata[f"VC_JOIN{new_state.guild_id}{new_state.user_id}"] = datetime.datetime.today().timestamp()
+        colour_hex = 0xFFBF00
+        target = new_state.member
+        fields = []
+
+    # Going live
+    elif same_channel and old_state.is_streaming != new_state.is_streaming:
+        if new_state.is_streaming:
+            title = "User started streaming"
+            description = f"<@{new_state.user_id}> started streaming in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0x32CD32
+        elif old_state.is_streaming:
+            title = "User stopped streaming"
+            description = f"<@{new_state.user_id}> stopped streaming in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0xFF2A26
+    
+    # Camera on
+    elif same_channel and old_state.is_video_enabled != new_state.is_video_enabled:
+        if new_state.is_video_enabled:
+            title = "User started video"
+            description = f"<@{new_state.user_id}> started video in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0x32CD32
+        elif old_state.is_video_enabled:
+            title = "User stopped video"
+            description = f"<@{new_state.user_id}> stopped video in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0xFF2A26
+            
+    # Self mute
+    elif same_channel and old_state.is_self_muted != new_state.is_self_muted:
+        if new_state.is_self_muted:
+            title = "User now muted"
+            description = f"<@{new_state.user_id}> is now muted in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0xFF2A26
+        elif old_state.is_self_muted:
+            title = "User no longer muted"
+            description = f"<@{new_state.user_id}> is no longer muted in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0x32CD32
+    
+    # Self deafen
+    elif same_channel and old_state.is_self_deafened != new_state.is_self_deafened:
+        if new_state.is_self_deafened:
+            title = "User now deafened"
+            description = f"<@{new_state.user_id}> is now deafened in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0xFF2A26
+        elif old_state.is_self_deafened:
+            title = "User no longer deafened"
+            description = f"<@{new_state.user_id}> is no longer deafened in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0x32CD32
+    
+    # Server mute
+    elif same_channel and old_state.is_guild_muted != new_state.is_guild_muted:
+        if new_state.is_guild_muted:
+            title = "User now server muted"
+            description = f"<@{new_state.user_id}> is now server muted in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0xFF2A26
+        elif old_state.is_guild_muted:
+            title = "User no longer server muted"
+            description = f"<@{new_state.user_id}> is no longer server muted in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0x32CD32
+            
+    # Server deafen
+    elif same_channel and old_state.is_guild_deafened != new_state.is_guild_deafened:
+        if new_state.is_guild_deafened:
+            title = "User now server deafened"
+            description = f"<@{new_state.user_id}> is now server deafened in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0xFF2A26
+        elif old_state.is_guild_deafened:
+            title = "User no longer server deafened"
+            description = f"<@{new_state.user_id}> is no longer server deafened in <#{new_state.channel_id}>"
+            fields = []
+            colour_hex = 0x32CD32
+     
+    # Any other events aren't worth logging
+    else:
+        return
+    
+    target = new_state.member
+    embed = bot.auto_embed(
+        type="logging",
+        author=COG_TYPE,
+        author_url = COG_LINK,
+        title = title,
+        description = description,
+        fields = fields,
+        thumbnail=target.avatar_url or target.default_avatar_url,
+        colour = hikari.Colour(colour_hex)
+        )
+    
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    if channels != None:
+        for channel in channels:
+             await bot.rest.create_message(channel,embed=embed)
+
+
 @tanjun.as_loader
 def load_components(client: Client):
     # Tanjun loader here as Client looks through every python
