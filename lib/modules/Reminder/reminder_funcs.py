@@ -4,6 +4,7 @@ Developed by Bspoones - Jan 2022
 Solely for use in the Cutlery Bot discord bot
 Doccumentation: https://www.bspoones.com/Cutlery-Bot/Reminder
 """
+import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from hikari.embeds import Embed
@@ -100,7 +101,7 @@ class Reminder():
                     )
         self.reminder_scheduler.add_job(
             self.send_missed_reminders,
-            CronTrigger(minute=7)
+            CronTrigger(second=7)
         )
         self.reminder_scheduler.start()
     
@@ -172,7 +173,12 @@ class Reminder():
         target_id = reminder[3]
         group_id = reminder[4]
         if target_type == "user":
-            target_member = await bot.rest.fetch_member(group_id,target_id)
+            # Check if the target is actually in the guild
+            try:
+                target_member = await bot.rest.fetch_member(group_id,target_id)
+            except hikari.NotFoundError:
+                # TODO: Figure out what to do if this fails
+                raise hikari.NotFoundError("User not found for reminder.")        
         else:
             target_member = None
         reminder_type = reminder[6]
