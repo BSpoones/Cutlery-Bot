@@ -90,7 +90,7 @@ async def botinfo_command(ctx: Context):
         type="info",
         author=f"{COG_TYPE}",
         author_url = COG_LINK,
-        title="Cutlery Bot bot info",
+        title="Cutlery Bot info",
         description=f"Total lines of code: `{total_lines:,}`\nTotal commands sent to the bot: `{commands_count:,}`",
         thumbnail=bot.avatar_url,
         fields=fields,
