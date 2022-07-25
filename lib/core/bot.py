@@ -122,7 +122,8 @@ class Bot(hikari.GatewayBot):
         for item in kwargs_list:
             match item:
                 case "thumbnail":
-                    embed.set_thumbnail((kwargs["thumbnail"]))
+                    if kwargs["thumbnail"] is not None:
+                        embed.set_thumbnail((kwargs["thumbnail"]))
                 case "fields":
                     for name,value, inline in kwargs["fields"]:
                         embed.add_field(name=name, value=value, inline=inline)
@@ -131,6 +132,8 @@ class Bot(hikari.GatewayBot):
                         embed.set_author(name=kwargs["author"],url=kwargs["author_url"])
                     else:
                         embed.set_author(name=kwargs["author"])
+                case "image":
+                    embed.set_image(kwargs["image"])
 
 
         match embed_type:
