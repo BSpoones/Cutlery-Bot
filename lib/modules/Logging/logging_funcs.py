@@ -1,3 +1,4 @@
+from os import remove
 from humanfriendly import format_timespan
 import requests, logging
 import tanjun, hikari, json, datetime
@@ -22,6 +23,12 @@ async def is_log_needed(event: str, guild_id: str) -> list[str] | str | None:
         return None
     else:
         return channel_ids           
+
+def parse_embed_to_json(embed: hikari.Embed) -> dict:
+    pass
+
+
+
 
 # Guild events
 
@@ -294,7 +301,74 @@ async def guild_channel_delete(bot: hikari.GatewayBot, event: hikari.GuildChanne
         for channel in channels:
             await bot.rest.create_message(channel,embed=embed)
 
+async def on_invite_create(bot: hikari.GatewayBot, event: hikari.InviteCreateEvent):
+    invite = event.invite
+    inviter = invite.inviter
+    channel_id = invite.channel_id
+    guild = await bot.rest.fetch_guild(invite.guild_id)
+    title = "Invite created"
+    description = f"<@{inviter.id}> created an invite to <#{channel_id}>:\nhttps://discord.gg/{invite.code}"
+    fields = []
+    
+    # Expiry
+    name = "Expires in"
+    value = f"<t:{int(invite.expires_at.timestamp())}:R>" if invite.expires_at else "Never"
+    inline = False
+    fields.append((name,value,inline))
+    
+    if invite.max_uses:
+        name = "Max uses"
+        value = f"`{invite.max_uses}`"
+        inline = False
+        fields.append((name,value,inline))
+        
+    embed = bot.auto_embed(
+            type="logging",
+            author=COG_TYPE,
+            author_url = COG_LINK,
+            title = title,
+            description = description,
+            fields = fields,
+            thumbnail = guild.icon_url if guild.icon_url else None,
+            colour = hikari.Colour(0x00FF00)
+            )
+    
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    if channels != None:
+        for channel in channels:
+            await bot.rest.create_message(channel,embed=embed)
 
+async def on_invite_delete(bot: hikari.GatewayBot, event: hikari.InviteDeleteEvent):
+    old_invite = event.old_invite
+    guild = await bot.rest.fetch_guild(event.guild_id)
+    title = "Invite deleted"
+    fields = []
+    if old_invite is None:
+        description = f"`{event.code}` has been deleted"
+    else:
+        description = f"`{event.code}` has been deleted"
+        
+        if old_invite.max_uses:
+            name = "Uses"
+            value = f"`{old_invite.uses}/{old_invite.max_uses}`"
+            inline = False
+            fields.append((name,value,inline))
+            
+    embed = bot.auto_embed(
+            type="logging",
+            author=COG_TYPE,
+            author_url = COG_LINK,
+            title = title,
+            description = description,
+            fields = fields,
+            thumbnail = guild.icon_url if guild.icon_url else None,
+            colour = hikari.Colour(0xFF0000)
+            )
+    
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    if channels != None:
+        for channel in channels:
+            await bot.rest.create_message(channel,embed=embed)
 
 # Reaction events
 
@@ -434,11 +508,121 @@ async def guild_reaction_delete_all(bot: hikari.GatewayBot, event: hikari.GuildR
 # Role events
 
 async def role_create(bot: hikari.GatewayBot, event: hikari.RoleCreateEvent):
+    # Any created role is always going to be a blank "new role" role.
+    title = "Role created"
+    description = "A new role has been created"
+    embed = bot.auto_embed(
+        type="logging",
+        author=COG_TYPE,
+        author_url = COG_LINK,
+        title = title,
+        description = description,
+        colour = hikari.Colour(0x00FF00)
+        )
     channels = await is_log_needed(event.__class__.__name__,event.guild_id)
     if channels != None:
         for channel in channels:
-            await bot.rest.create_message(channel,content="Role has been created")
+            await bot.rest.create_message(channel,embed=embed)
 
+async def role_update(bot: hikari.GatewayBot, event: hikari.RoleUpdateEvent):
+    old_role = event.old_role
+    new_role = event.role
+    guild = await bot.rest.fetch_guild(event.guild_id)
+    if old_role is None:
+        # Can't log role changes if there's no role to compare
+        return
+    title = f"Role update"
+    description = f"<@&{new_role.id}> (`{new_role.name}`) has been updated."
+    fields = []
+    # Name change
+    if old_role.name != new_role.name:
+        name = f"Name changed"
+        value = f"{old_role.name} -> {new_role.name}"
+        inline = False
+        fields.append((name,value,inline))
+    
+    # Colour change  
+    if old_role.colour != new_role.colour:
+        name = f"Colour changed"
+        old_hex = old_role.colour.raw_hex_code
+        new_hex = new_role.colour.raw_hex_code
+        value = f"[Old colour](https://www.color-hex.com/color/{old_hex}) -> [New colour](https://www.color-hex.com/color/{new_hex})"
+        inline = False
+        fields.append((name,value,inline))
+    
+    # Permission change
+    if old_role.permissions != new_role.permissions:
+        old_perms = old_role.permissions
+        new_perms = new_role.permissions
+        # Allowed perms
+        old_allow = (str(old_perms).split("|"))
+        new_allow = (str(new_perms).split("|"))
+        old_allow.remove("NONE") if "NONE" in old_allow else None
+        new_allow.remove("NONE") if "NONE" in new_allow else None
+        
+        # Showing only the changes in the allow list
+        added_perms = list(set(new_allow)-set(old_allow))
+        removed_perms = list(set(old_allow)-set(new_allow))
+        if added_perms != []:
+            name = f"`{len(added_perms)}` Permissions added"
+            value = "\n".join(added_perms)
+            inline = True if removed_perms != [] else False
+            fields.append((name,value,inline))
+        if removed_perms != []:
+            name = f"`{len(removed_perms)}` Permissions removed"
+            value = "\n".join(removed_perms)
+            inline = True if added_perms != [] else False # Puts added and removed perms on same line
+            fields.append((name,value,inline))
+    if old_role.is_hoisted != new_role.is_hoisted:
+        name = "Hoist changed"
+        if not old_role.is_hoisted and new_role.is_hoisted:
+            value = "This role is now displayed seperately"
+        elif old_role.is_hoisted and not new_role.is_hoisted:
+            value = "This role is no longer displayed seperately"
+        else:
+            pass
+        inline = False
+        fields.append((name,value,inline))
+
+    if fields == []:
+        # If no required changes occur
+        return
+    
+    embed = bot.auto_embed(
+            type="logging",
+            author=COG_TYPE,
+            author_url = COG_LINK,
+            title = title,
+            description = description,
+            fields = fields,
+            thumbnail = new_role.unicode_emoji.url if new_role.unicode_emoji else (guild.icon_url if guild.icon_url else None),
+            colour = hikari.Colour(0xFFBF00)
+            )
+    
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    if channels != None:
+        for channel in channels:
+            await bot.rest.create_message(channel,embed=embed)
+
+async def role_delete(bot: hikari.GatewayBot, event: hikari.RoleDeleteEvent):
+    old_role = event.old_role
+    if old_role is None:
+        return
+    title = "Role deleted"
+    description = f"`{old_role.name}` has been deleted."
+    embed = bot.auto_embed(
+        type="logging",
+        author=COG_TYPE,
+        author_url = COG_LINK,
+        title = title,
+        description = description,
+        colour = hikari.Colour(0xFF0000)
+        )
+    
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    if channels != None:
+        for channel in channels:
+            await bot.rest.create_message(channel,embed=embed)
 
 # Message events
 
