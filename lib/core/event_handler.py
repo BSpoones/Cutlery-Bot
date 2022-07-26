@@ -1,7 +1,5 @@
 import hikari, tanjun, logging, time, datetime
 from humanfriendly import format_timespan
-from matplotlib.image import thumbnail
-from hikari.events.base_events import ExceptionEvent
 from data.bot.data import VERSION, OUTPUT_CHANNEL
 from lib.utils.utilities import update_bot_presence
 from lib.modules.Logging import logging_funcs
@@ -64,8 +62,8 @@ class EventHandler():
             hikari.OwnUserUpdateEvent : self.on_own_user_update_event,
             hikari.VoiceStateUpdateEvent : self.on_voice_state_update_event,
             hikari.VoiceServerUpdateEvent : self.on_voice_server_update_event,
-            
-        }
+        
+        }    
     
     def subscribe_to_events(self):
         logging.info("Adding events to event manager")
@@ -192,13 +190,17 @@ class EventHandler():
     
     async def on_guild_pins_update_event(self, event: hikari.GuildPinsUpdateEvent):
         pass
+    
     async def on_DM_pins_update_event(self, event: hikari.DMPinsUpdateEvent):
         # Doesn't need logging
         pass
+    
     async def on_invite_create_event(self, event: hikari.InviteCreateEvent):
-        pass
+        await logging_funcs.on_invite_create(self.bot,event)
+    
     async def on_invite_delete_event(self, event: hikari.InviteDeleteEvent):
-        pass
+        await logging_funcs.on_invite_delete(self.bot,event)
+    
     async def on_webhook_update_event(self, event: hikari.WebhookUpdateEvent):
         # Doesn't need logging
         pass
@@ -270,9 +272,10 @@ class EventHandler():
         await logging_funcs.role_create(self.bot, event)
     
     async def on_role_update_event(self, event: hikari.RoleUpdateEvent):
-        pass
+        await logging_funcs.role_update(self.bot,event)
+    
     async def on_role_delete_event(self, event: hikari.RoleDeleteEvent):
-        pass
+        await logging_funcs.role_delete(self.bot,event)
     
     # Scheduled events
     async def on_scheduled_event_create_event(self, event: hikari.ScheduledEventCreateEvent):
