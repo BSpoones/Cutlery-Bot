@@ -156,54 +156,80 @@ async def guild_channel_create(bot: hikari.GatewayBot, event: hikari.GuildChanne
             await bot.rest.create_message(channel,embed=embed)
 
 async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUpdateEvent):
-    old_channel = event.old_channel
-    new_channel = event.channel
-    guild = await new_channel.fetch_guild()
+    guild = await bot.rest.fetch_guild(event.guild_id)
+    
+    if isinstance(event.channel,hikari.GuildTextChannel):
+        old_channel: hikari.GuildVoiceChannel = event.old_channel
+        new_channel: hikari.GuildVoiceChannel = event.channel
+    else:
+        old_channel = event.old_channel
+        new_channel = event.channel
+    
+    if old_channel is None:
+        # To be parsed from channel in database
+        return
+    
+    channel_type = new_channel.type.name
+    match channel_type:
+        case "GUILD_TEXT":
+            title = "Text channel change"
+        case "GUILD_VOICE":
+            title = "Voice channel change"
+        case "GUILD_CATEGORY":
+            title = "Category change"
+        case "GUILD_NEWS":
+            title = "Announcement channel change"
+        case "GUILD_STAGE":
+            title = "Stage channel change"
+        case _:
+            return
+    
+    fields = []
+    
+    # The following can be changed on all channels
+    
     # Name change
     if old_channel.name != new_channel.name:
-        title = "Channel name change"
-        description = f"**Old:** `{old_channel.name}`\n**New:** <#{new_channel.id}> ({new_channel.name})"
-        fields = []
-    # Category change
-    elif old_channel.parent_id != new_channel.parent_id:
-        # Old category name
-        if old_channel.parent_id is not None:
-            old_category_name = (await bot.rest.fetch_channel(old_channel.parent_id)).name
-        else:
-            old_category_name = "Not in a category"
-        # New category name
-        if new_channel.parent_id is not None:
-            new_category_name = (await bot.rest.fetch_channel(new_channel.parent_id)).name
-        else:
-            new_category_name = "Not in a category"
-        
-        title = "Category change"
-        description = f"<#{new_channel.id}> has moved categories\n**Old:** {old_category_name}\n**New:** {new_category_name}"
-        fields = []
-    # Position change will not be logged because multiple events can be
-    # fired for one position change
-    elif old_channel.is_nsfw != new_channel.is_nsfw:
-        title = "NSFW mode change"
-        description = f"**Old NSFW status:** `{old_channel.is_nsfw}`\n**New NSFW status:** `{new_channel.is_nsfw}`"
-        fields = []
-    elif old_channel.permission_overwrites != new_channel.permission_overwrites:
+        name = "Name change"
+        value = f"`{old_channel.name}` :fast_forward: <#{new_channel.id}> ({new_channel.name})"
+        fields.append((name,value,False))
+    
+    # Permission change
+    if old_channel.permission_overwrites != new_channel.permission_overwrites:
         old_perms = old_channel.permission_overwrites
         new_perms = new_channel.permission_overwrites
+        guild_roles = await bot.rest.fetch_roles(event.guild_id)
+        guild_role_ids = [role.id for role in guild_roles]
+        
         if len(old_perms) > len(new_perms):
-            # Role removed
-            removed_role_id = list(set(old_perms.keys())-set(new_perms.keys()))
+            # Role or user removed
+            removed_permission_id = (list(set(old_perms.keys())-set(new_perms.keys())))[0]
+            # Check for role / user
+            if removed_permission_id in guild_role_ids:
+                # Guarenteed role
+                name = "Role removed"
+                value = f"<@&{removed_permission_id}> has been removed"
+            else:
+                # Guarenteed user
+                name = "Member removed"
+                value = f"<@{removed_permission_id}> has been removed"
+            fields.append((name,value,False))  
             
-            title = "Role removed from channel"
-            description = f"<@&{removed_role_id[0]}> has been removed from <#{new_channel.id}>"
-            fields = []
         elif len(old_perms) < len(new_perms):
-            # Role added
-            added_role_id = list(set(new_perms.keys())-set(old_perms.keys()))
+            # Role or user added
+            added_permission_id = (list(set(new_perms.keys())-set(old_perms.keys())))[0]
             
-            title = "Role added to channel"
-            description = f"<@&{added_role_id[0]}> has been added to <#{new_channel.id}>"
-            fields = []
-            
+            # Check for role / user
+            if added_permission_id in guild_role_ids:
+                # Guarenteed role
+                name = "Role removed"
+                value = f"<@&{added_permission_id}> has been added"
+            else:
+                # Guarenteed user
+                name = "Member added"
+                value = f"<@{added_permission_id}> has been added"
+            fields.append((name,value,False))
+
         else:
             changed_perms = [(old,new) for old,new in zip(sorted(old_perms.items()),sorted(new_perms.items())) if (old[1].allow != new[1].allow) or (old[1].deny != new[1].deny)]
             changed_perms = changed_perms[0] # Each role change will cause a new event
@@ -211,6 +237,18 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
             old_id, old_perm = old_change
             new_id, new_perm = new_change
             
+            # Check for role / user
+            if new_id in guild_role_ids:
+                # Guarenteed role
+                name = "Role update"
+                value = f"Permissions for <@&{new_id}> have been updated"
+            else:
+                # Guarenteed user
+                name = "Member update"
+                value = f"Permissions for <@{new_id}> have been updated"
+            fields.append((name,value,False))
+            
+
             # Allowed perms
             old_allow = (str(old_perm.allow).split("|"))
             new_allow = (str(new_perm.allow).split("|"))
@@ -231,11 +269,9 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
             added_deny = list(set(new_deny)-set(old_deny))
             removed_deny = list(set(old_deny)-set(new_deny))
             
-            
-            title = "Permissions changed in channel"
-            description = f"Permissions for <@&{new_id}> have been updated in <#{new_channel.id}>"
+
             # Formatting allow
-            fields = []
+            
             name =  f"Allowed permissions :white_check_mark:"
             value = ""
             if added_allow != []:
@@ -256,18 +292,84 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
             if added_deny == [] and removed_deny == []:
                 value += "No changes."
             fields.append((name,value,False))
+    
+    # TODO: Position change
+    if old_channel.position != new_channel.position:
+        
+        # 2 possible changes:
+        # Either a channel swap (difference of 1 but there's pair)
+        # - It isn't possible to tell which one was moved, only that they were swapped
+        # Drastic change noticable (where difference of old - new is >1)
+                
+        pass        
+    # The following apply to text and voice channels
+    if channel_type in ("GUILD_TEXT","GUILD_VOICE"):
+        # Category change
+        if old_channel.parent_id != new_channel.parent_id:
+            # Old category name
+            if old_channel.parent_id is not None:
+                old_category_name = (await bot.rest.fetch_channel(old_channel.parent_id)).name
+            else:
+                old_category_name = "No category"
+            # New category name
+            if new_channel.parent_id is not None:
+                new_category_name = (await bot.rest.fetch_channel(new_channel.parent_id)).name
+            else:
+                new_category_name = "No category"
             
-    else:
-        pass # Something has changed in the channel that is unknown
+            name = "Category change"
+            value = f"`{old_category_name}` :fast_forward: `{new_category_name}`    "
+            fields.append((name,value,False))
+        
+        # NSFW change
+        if old_channel.is_nsfw != new_channel.is_nsfw:
+            name = "Age restricted?"
+            value = f"`{old_channel.is_nsfw}` :fast_forward: `{new_channel.is_nsfw}`"
+            fields.append((name,value,False))
+    
+    if channel_type == "GUILD_TEXT":
+        if old_channel.topic != new_channel.topic:
+            name = "Channel topic change"
+            value = f"**Old: **```{old_channel.topic}```\n**New: **```{new_channel.topic}```"
+            fields.append((name,value,False))
+        if old_channel.rate_limit_per_user != new_channel.rate_limit_per_user:
+            old_slowmode = format_timespan(old_channel.rate_limit_per_user.total_seconds())
+            new_slowmode = format_timespan(new_channel.rate_limit_per_user.total_seconds())
+            
+            name = "Slowmode change"
+            value = f"`{old_slowmode}` :fast_forward: `{new_slowmode}`"
+            fields.append((name,value,False))
+            
+    elif channel_type == "GUILD_VOICE":
+        if old_channel.bitrate != new_channel.bitrate:
+            old_bitrate = f"{int(old_channel.bitrate/1000)}kbps"
+            new_bitrate = f"{int(new_channel.bitrate/1000)}kbps"
+            name = "Bitrate change"
+            value = f"`{old_bitrate}` :fast_forward: `{new_bitrate}`"
+            fields.append((name,value,False))
+        if old_channel.video_quality_mode != new_channel.video_quality_mode:
+            name = "Video quality change"
+            value = f"`{old_channel.video_quality_mode.name}` :fast_forward: `{new_channel.video_quality_mode.name}`"
+            fields.append((name,value,False))
+        if old_channel.user_limit != new_channel.user_limit:
+            old_limit = "∞" if old_channel.user_limit == 0 else old_channel.user_limit
+            new_limit = "∞" if new_channel.user_limit == 0 else new_channel.user_limit
+            name = "User limit change"
+            value = f"`{old_limit}` :fast_forward: `{new_limit}`"
+            fields.append((name,value,False))
+
+    if fields == []:
+        return
     
     embed = bot.auto_embed(
         type="logging",
         author=COG_TYPE,
         author_url = COG_LINK,
         title = title,
-        description = description,
+        description = f"<#{new_channel.id}> has been updated",
         fields = fields,
         thumbnail=guild.icon_url,
+        footer = f"ID: {new_channel.id}",
         colour = hikari.Colour(0xFFBF00)
         )
     
@@ -293,6 +395,7 @@ async def guild_channel_delete(bot: hikari.GatewayBot, event: hikari.GuildChanne
         title = f"Channel deleted",
         description = description,
         thumbnail=guild.icon_url,
+        footer = f"ID: {channel.id}",
         colour = hikari.Colour(0xFF0000)
         )
     
@@ -517,6 +620,7 @@ async def role_create(bot: hikari.GatewayBot, event: hikari.RoleCreateEvent):
         author_url = COG_LINK,
         title = title,
         description = description,
+        footer = f"ID: {event.role_id}",
         colour = hikari.Colour(0x00FF00)
         )
     channels = await is_log_needed(event.__class__.__name__,event.guild_id)
@@ -596,6 +700,7 @@ async def role_update(bot: hikari.GatewayBot, event: hikari.RoleUpdateEvent):
             description = description,
             fields = fields,
             thumbnail = new_role.unicode_emoji.url if new_role.unicode_emoji else (guild.icon_url if guild.icon_url else None),
+            footer = f"ID: {event.role_id}",
             colour = hikari.Colour(0xFFBF00)
             )
     
@@ -608,6 +713,7 @@ async def role_delete(bot: hikari.GatewayBot, event: hikari.RoleDeleteEvent):
     old_role = event.old_role
     if old_role is None:
         return
+    role_id = event.role_id
     title = "Role deleted"
     description = f"`{old_role.name}` has been deleted."
     embed = bot.auto_embed(
@@ -616,6 +722,7 @@ async def role_delete(bot: hikari.GatewayBot, event: hikari.RoleDeleteEvent):
         author_url = COG_LINK,
         title = title,
         description = description,
+        footer = f"ID: {role_id}",
         colour = hikari.Colour(0xFF0000)
         )
     
@@ -725,6 +832,7 @@ async def on_member_create(bot: hikari.GatewayBot, event: hikari.MemberCreateEve
         title = f"User Join",
         description = description,
         thumbnail=target.avatar_url or target.default_avatar_url,
+        footer = f"ID: {target.id}",
         colour = hikari.Colour(0x00FF00)
         
     )
@@ -767,6 +875,7 @@ async def on_member_delete(bot: hikari.GatewayBot, event: hikari.MemberDeleteEve
         title = f"User Leave",
         description = description,
         thumbnail=target.avatar_url or target.default_avatar_url,
+        footer = f"ID: {target.id}",
         colour = hikari.Colour(0xFF0000)
     )
     if leave_channels != None:
