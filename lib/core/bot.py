@@ -134,13 +134,16 @@ class Bot(hikari.GatewayBot):
                         embed.set_author(name=kwargs["author"])
                 case "image":
                     embed.set_image(kwargs["image"])
+                case "footer":
+                    embed.set_footer(text=kwargs["footer"],icon=kwargs["footericon"] if "footericon" in kwargs else None)
+
 
 
         match embed_type:
             case "error":
                 embed.set_author(name="Error", icon="https://freeiconshop.com/wp-content/uploads/edd/error-flat.png")
             case "lesson":
-                embed.set_footer(text=kwargs["schoolname"],icon=kwargs["iconurl"] if kwargs["iconurl"] is not None else None)
+                embed.set_footer(text=kwargs["schoolname"],icon=kwargs["iconurl"] if kwargs["iconurl"] else None)
             case "userinfo":
                 embed.set_footer(text=kwargs["member"].display_name,icon=(kwargs["member"].avatar_url))
             case "reminder":
