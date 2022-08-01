@@ -1,6 +1,6 @@
 from data.bot.data import ACTIVITY_NAME, OWNER_IDS, TRUSTED_IDS, VERSION
 from tanjun.abc import Context as Context
-import datetime, hikari, tanjun
+import datetime, hikari, tanjun, logging
 
 def next_occourance_of_time(time_input: datetime.time) -> datetime.datetime:
     """
@@ -55,3 +55,129 @@ async def update_bot_presence(bot: hikari.GatewayBot):
             member_count = len(members_set) # Unique users       
             
             await bot.update_presence(status=hikari.Status.DO_NOT_DISTURB,activity=hikari.Activity(type=hikari.ActivityType.PLAYING, name=f"{ACTIVITY_NAME}{VERSION} | {member_count} users on {guild_count} servers"))
+            
+def get_colour_from_ctx(ctx: tanjun.abc.Context):
+    return (ctx.member.get_top_role().color)
+def get_colour_from_member(member: hikari.Member):
+    return (member.get_top_role().color)
+       
+def auto_embed(**kwargs):
+        """
+        Creates an embed from kwargs, keeping the same pattern.
+        
+        Parameters
+        ----------
+        - `type`: The type of reminder
+        - `author`: Author of command, used for cog name in Cutlery Bot
+        - `author_url`: URL of author, used for webstie in Cutlery Bot
+        - `title`: Embed title
+        - `url`: URL for the embed, will appear as clickable on the title
+        - `description`: Embed description
+        - `fields`: 3 item tuple for fields (name,value,inline).
+        - `colour`: Colour of embed (OPTIONAL: Default is `0x206694`)
+        
+        `remindertext`: REMINDER TYPE ONLY - Text to be shown on the footer on a reminder
+        `member`: REMINDER TYPE ONLY - User to be set for footer
+        `emoji_url`: EMOJI TYPE ONLY - Sets image for embed
+        `schoolname`: LESSON TYPE ONLY - Sets footer to be the schoolname
+        
+        Returns
+        -------
+        hikari.Embed
+        
+        Example
+        -------
+        ```py
+        embed = auto_embed(
+            type="info",
+            title = "This is an Embed",
+            url = "http://www.bspoones.com/", # Will set link in title
+            description = "This is my description",
+            fields = [
+                ("Field Title","Field Description",False) # 3rd item is Inline
+                ],
+        )
+        ```
+        """
+        if "type" not in kwargs:
+            embed_type = "default"
+        else:
+            embed_type = kwargs["type"]
+
+        if "colour" not in kwargs:
+            match embed_type.lower():
+                case "default" | "logging":
+                    colour = hikari.Colour(0x2ecc71)
+                case "error":
+                    colour = hikari.Colour(0xe74c3c)
+                case "schedule" | "info" | "emoji":
+                    colour = get_colour_from_ctx(ctx=kwargs["ctx"])
+                    if str(colour) == "#000000":
+                        colour = hikari.Colour(0x206694)
+                case "userinfo":
+                    colour = get_colour_from_member(kwargs["member"])
+                case _:
+                    if "member" in kwargs:
+                        if kwargs["member"] is None:
+                            colour = hikari.Colour(0x206694)
+                        else:
+                            colour = get_colour_from_member(kwargs["member"])
+                    else:
+                        logging.error("This shouldn't happen")
+                        colour = hikari.Colour(0x2ecc71)
+            kwargs["colour"] = colour
+
+        kwargs["timestamp"]=datetime.datetime.now(tz=datetime.timezone.utc)
+        
+        allowed_kwargs = ["title","description","url","timestamp","colour","colour",]
+        new_kwargs_list = list(filter(lambda x: x in allowed_kwargs,kwargs.keys()))
+        new_kwargs = {}
+        for item in new_kwargs_list:
+            new_kwargs[item] = kwargs[item]
+        embed = hikari.Embed(**new_kwargs)
+        kwargs_list = (list(kwargs.keys()))
+        for item in kwargs_list:
+            match item:
+                case "thumbnail":
+                    if kwargs["thumbnail"] is not None:
+                        embed.set_thumbnail((kwargs["thumbnail"]))
+                case "fields":
+                    for name,value, inline in kwargs["fields"]:
+                        embed.add_field(name=name, value=value, inline=inline)
+                case "author":
+                    embed.set_author(
+                        name=kwargs["author"],
+                        url=kwargs["author_url"] if "author_url" in kwargs else None,
+                        icon = kwargs["author_icon"] if "author_icon" in kwargs else None
+                        )
+                case "image":
+                    embed.set_image(kwargs["image"])
+                case "footer":
+                    embed.set_footer(text=kwargs["footer"],icon=kwargs["footericon"] if "footericon" in kwargs else None)
+
+
+
+        match embed_type:
+            case "error":
+                embed.set_author(name="Error", icon="https://freeiconshop.com/wp-content/uploads/edd/error-flat.png")
+            case "lesson":
+                embed.set_footer(text=kwargs["schoolname"],icon=kwargs["iconurl"] if kwargs["iconurl"] else None)
+            case "userinfo":
+                embed.set_footer(text=kwargs["member"].display_name,icon=(kwargs["member"].avatar_url))
+            case "reminder":
+                embed.set_footer(text=kwargs["remindertext"],icon="https://freeiconshop.com/wp-content/uploads/edd/notification-outlined-filled.png")
+        if embed_type == "emoji":
+            embed.set_image(kwargs["emoji_url"])
+        if "ctx" in kwargs:
+            ctx: tanjun.abc.Context = kwargs["ctx"]
+            if ctx.author.id == 724351142158401577:
+                embed.set_footer(
+                    text=f"Requested by {ctx.member.display_name} 🥄",
+                    icon=ctx.member.avatar_url,
+                )
+            else:
+                embed.set_footer(
+                    text=f"Requested by {ctx.member.display_name}",
+                    icon=ctx.member.avatar_url,
+                )
+        return embed
