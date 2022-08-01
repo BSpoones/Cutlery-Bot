@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS MessageLogs (
     ChannelID VARCHAR(19) NOT NULL,
     MessageID VARCHAR(19) PRIMARY KEY,
     AuthorID VARCHAR(19) NOT NULL,
-    MessageContent TEXT(4000),
+    MessageContent TEXT(4000), -- Nitro message limit
     MessageReferenceID VARCHAR(19), -- Just a message id
     Pinned BOOL NOT NULL,
     TTS BOOL NOT NULL,
@@ -116,9 +116,14 @@ CREATE TABLE IF NOT EXISTS MessageLogs (
     -- Components TEXT, NOTE: To be added later
     EmbedsJSON TEXT,
     ReactionsJSON TEXT, -- bunch of items, each item contains: the emoji name/id etc, and a list of memberids?
-    CreatedAt TIMESTAMP NOT NULL
+    CreatedAt TIMESTAMP NOT NULL,
+    DeletedAt TIMESTAMP
 );
+
+-- Converts charset to allow emoji
 ALTER TABLE MessageLogs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+
 -- Stores valid log actions
 CREATE TABLE IF NOT EXISTS LogAction (
   ActionID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
