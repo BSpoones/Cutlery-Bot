@@ -128,10 +128,11 @@ class Bot(hikari.GatewayBot):
                     for name,value, inline in kwargs["fields"]:
                         embed.add_field(name=name, value=value, inline=inline)
                 case "author":
-                    if "author_url" in kwargs_list:
-                        embed.set_author(name=kwargs["author"],url=kwargs["author_url"])
-                    else:
-                        embed.set_author(name=kwargs["author"])
+                    embed.set_author(
+                        name=kwargs["author"],
+                        url=kwargs["author_url"] if "author_url" in kwargs else None,
+                        icon = kwargs["author_icon"] if "author_icon" in kwargs else None
+                        )
                 case "image":
                     embed.set_image(kwargs["image"])
                 case "footer":
