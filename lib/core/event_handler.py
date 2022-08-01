@@ -28,7 +28,6 @@ class EventHandler():
             hikari.GuildChannelCreateEvent : self.on_guild_channel_create_event,
             hikari.GuildChannelUpdateEvent : self.on_guild_channel_edit_event,
             hikari.GuildChannelDeleteEvent : self.on_guild_channel_delete_event,
-            hikari.GuildPinsUpdateEvent : self.on_guild_pins_update_event,
             hikari.DMPinsUpdateEvent : self.on_DM_pins_update_event,
             hikari.InviteCreateEvent : self.on_invite_create_event,
             hikari.InviteDeleteEvent : self.on_invite_delete_event,
@@ -189,7 +188,7 @@ class EventHandler():
         await logging_funcs.guild_channel_delete(self.bot,event)
     
     async def on_guild_pins_update_event(self, event: hikari.GuildPinsUpdateEvent):
-        pass
+        await logging_funcs.on_guild_pins_update(self.bot,event)
     
     async def on_DM_pins_update_event(self, event: hikari.DMPinsUpdateEvent):
         # Doesn't need logging
@@ -210,8 +209,7 @@ class EventHandler():
         await logging_funcs.on_member_create(self.bot,event)
     
     async def on_member_update_event(self, event: hikari.MemberUpdateEvent):
-        pass
-    
+        pass  
     async def on_member_delete_event(self, event: hikari.MemberDeleteEvent):
         await logging_funcs.on_member_delete(self.bot,event)
     
@@ -220,20 +218,10 @@ class EventHandler():
         await logging_funcs.message_create(self.bot,event)
     
     async def on_guild_message_update_event(self, event: hikari.GuildMessageUpdateEvent):
-        return
-        print(event.__class__.__name__)
-        print(event.message.is_pinned)
-        try:
-            print(event.old_message.content)
-        except:
-            pass
-        print(event.message.content)
-        print(event.message_id)
-        print(event.message.guild_id, event.message.channel_id, event.message_id)
-        print(f"https://discord.com/channels/{event.message.guild_id}/{event.message.channel_id}/{ event.message_id}")
-    
+        await logging_funcs.message_edit(self.bot, event)
+            
     async def on_guild_message_delete_event(self, event: hikari.GuildMessageDeleteEvent):
-        pass
+        await logging_funcs.message_delete(self.bot,event)
     async def on_DM_message_create_event(self, event: hikari.DMMessageCreateEvent):
         # Doesn't need logging
         pass
@@ -244,7 +232,7 @@ class EventHandler():
         # Doesn't need logging
         pass
     async def on_guild_bulk_message_delete_event(self, event: hikari.GuildBulkMessageDeleteEvent):
-        pass
+        await logging_funcs.bulk_message_delete(self.bot,event)
     
     # Reaction events
     async def on_guild_reaction_create_event(self, event: hikari.GuildReactionAddEvent):
