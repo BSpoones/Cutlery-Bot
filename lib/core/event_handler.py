@@ -209,7 +209,7 @@ class EventHandler():
         await logging_funcs.on_member_create(self.bot,event)
     
     async def on_member_update_event(self, event: hikari.MemberUpdateEvent):
-        pass  
+        await logging_funcs.on_member_update(self.bot, event)  
     async def on_member_delete_event(self, event: hikari.MemberDeleteEvent):
         await logging_funcs.on_member_delete(self.bot,event)
     
@@ -222,6 +222,7 @@ class EventHandler():
             
     async def on_guild_message_delete_event(self, event: hikari.GuildMessageDeleteEvent):
         await logging_funcs.message_delete(self.bot,event)
+    
     async def on_DM_message_create_event(self, event: hikari.DMMessageCreateEvent):
         # Doesn't need logging
         pass
@@ -231,6 +232,7 @@ class EventHandler():
     async def on_DM_message_delete_event(self, event: hikari.DMMessageDeleteEvent):
         # Doesn't need logging
         pass
+    
     async def on_guild_bulk_message_delete_event(self, event: hikari.GuildBulkMessageDeleteEvent):
         await logging_funcs.bulk_message_delete(self.bot,event)
     

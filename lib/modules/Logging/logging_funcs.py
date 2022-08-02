@@ -55,7 +55,7 @@ def format_embed_to_field_value(embed: hikari.Embed):
     return value
     
 
-def convert_json_to_attachment(json_data: str):
+def convert_json_to_attachment(json_data: str) -> list[hikari.Attachment] or list:
     json_data = json_data.replace("'",'"')
     attachment_json = json.loads(json_data)
     attachments = attachment_json["Attachments"]
@@ -173,7 +173,7 @@ def convert_message_to_dict(message: hikari.Message) -> dict:
     output["AuthorID"] = message.author.id if message.author else None
     output["MessageContent"] = message.content
     output["MessageReference"] = message.referenced_message.id if message.referenced_message else None
-    output["Pinned"] = int(message.is_pinned)
+    output["Pinned"] = int(message.is_pinned if message.is_pinned else 0)
     output["TTS"] = int(message.is_tts)
     output["EmbedsJSON"] = EmbedsJSON
     output["AttachmentsJSON"] = AttachmentsJSON
@@ -297,6 +297,20 @@ async def guild_channel_create(bot: hikari.GatewayBot, event: hikari.GuildChanne
         category = (await bot.rest.fetch_channel(channel.parent_id)).name
     else:
         category = None
+    channel_type = channel.type.name
+    match channel_type:
+        case "GUILD_TEXT":
+            title = "Text channel created"
+        case "GUILD_VOICE":
+            title = "Voice channel created"
+        case "GUILD_CATEGORY":
+            title = "Category created"
+        case "GUILD_NEWS":
+            title = "Announcement channel created"
+        case "GUILD_STAGE":
+            title = "Stage channel created"
+        case _:
+            return
     description = f"**Name: **<#{channel.id}> ({channel.name})\n**Type: **`{channel.type}`"
     if category:
         description += f"\n**Category: **`{category}`"
@@ -304,7 +318,7 @@ async def guild_channel_create(bot: hikari.GatewayBot, event: hikari.GuildChanne
         type="logging",
         author=COG_TYPE,
         author_url = COG_LINK,
-        title = f"Channel created",
+        title = title,
         description = description,
         thumbnail=guild.icon_url,
         colour = hikari.Colour(0x00FF00)
@@ -544,6 +558,21 @@ async def guild_channel_delete(bot: hikari.GatewayBot, event: hikari.GuildChanne
         category = (await bot.rest.fetch_channel(channel.parent_id)).name
     else:
         category = None
+        
+    channel_type = channel.type.name
+    match channel_type:
+        case "GUILD_TEXT":
+            title = "Text channel deleted"
+        case "GUILD_VOICE":
+            title = "Voice channel deleted"
+        case "GUILD_CATEGORY":
+            title = "Category deleted"
+        case "GUILD_NEWS":
+            title = "Announcement channel deleted"
+        case "GUILD_STAGE":
+            title = "Stage channel deleted"
+        case _:
+            return
     description = f"**Name: ** `{channel.name}`\n**Type: **`{channel.type}`"
     if category:
         description += f"\n**Category: **`{category}`"
@@ -551,7 +580,7 @@ async def guild_channel_delete(bot: hikari.GatewayBot, event: hikari.GuildChanne
         type="logging",
         author=COG_TYPE,
         author_url = COG_LINK,
-        title = f"Channel deleted",
+        title = title,
         description = description,
         thumbnail=guild.icon_url,
         footer = f"ID: {channel.id}",
@@ -950,7 +979,7 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
             return
         old_content: str = old_message[4]
         if old_content == "None":
-            old_content = None
+            old_content = ""
         old_attachments_json: str = old_message[8]
         old_attachments = convert_json_to_attachment(old_attachments_json)
         old_embeds_json: dict = old_message[9]
@@ -1003,16 +1032,15 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
                new_message.id
                )
             db.commit()
-        
+    
+    old_content = old_content if old_content else ""
+    new_content = new_message.content if new_message.content else ""
     # Content change
-    if old_content != new_message.content:
+    if old_content != new_content:
         # Difference of 2 strings to be put here later
         name = f"Content change"
-        old_content = old_content if old_content else ""
         if old_content == "None":
             old_content = ""
-        new_content = new_message.content if new_message.content else ""
-    
         if len(old_content) + len(new_content) > 996:
             old_content = old_content[:494] + ("..." if len(old_content) > 494 else "")
             new_content = new_message.content[:494] + ("..." if len(new_content) > 494 else "")
@@ -1049,6 +1077,7 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
             for embed in old_embeds:
                 value += "\n\n" + format_embed_to_field_value(embed)
             fields.append((name,value,False))
+        
         else:
             changed_embeds = [(old,new) for old,new in zip(old_embeds,new_embeds) if old != new ]
             name = f"{len(old_embeds) if len(old_embeds) > 1 else ''}Embed{'s' if len(old_embeds) > 1 else ''} edited"
@@ -1058,8 +1087,10 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
                 new = embeds[1]
                 old_value = format_embed_to_field_value(old)
                 new_value = format_embed_to_field_value(new)
-                value += f"__**Old**__\n{old_value}\n__**New**__\n{new_value}\n"
-            fields.append((name,value,False))
+                if old_value != new_value:
+                    value += f"__**Old**__\n{old_value}\n__**New**__\n{new_value}\n"
+            if value != "":
+                fields.append((name,value,False))
                 
     if fields == []:
         # Component and embed change
@@ -1181,6 +1212,7 @@ async def message_delete(bot: hikari.GatewayBot,event: hikari.GuildMessageDelete
 async def bulk_message_delete(bot: hikari.GatewayBot, event: hikari.GuildBulkMessageDeleteEvent):
     old_messages = event.old_messages
     actual_messages = []
+    db_messages = []
     for message_id in event.message_ids:
         if message_id in old_messages.keys():
             message = convert_message_to_dict(old_messages[message_id])
@@ -1202,6 +1234,7 @@ async def bulk_message_delete(bot: hikari.GatewayBot, event: hikari.GuildBulkMes
                 output["ReactionsJSON"] = old_message[10]
                 output["CreatedAt"] = old_message[11]
                 actual_messages.append(output)
+                db_messages.append(str(message_id))
     
     # Displaying deleted messages with oldest on top
     actual_messages = sorted(actual_messages, key= lambda x: x["CreatedAt"], reverse=True)
@@ -1225,9 +1258,29 @@ async def bulk_message_delete(bot: hikari.GatewayBot, event: hikari.GuildBulkMes
                 user = await bot.rest.fetch_member(event.guild_id,message['AuthorID'])
                 
             name = f"{user.username} ({message['AuthorID']})"
-            # TODO: Format field value
-            value = message["MessageContent"]
-            fields.append((name,value,False))
+            value = ""
+            # Showing content, embed & attachments
+            message_content = message["MessageContent"] if message["MessageContent"] else ""
+            value += (message_content)[:300] # 300 chars of message
+            if len(message_content) > 300:
+                value += "..."
+            AttachmentsJSON = json.dumps(message["AttachmentsJSON"])
+            EmbedsJSON = json.dumps(message["EmbedsJSON"])
+            attachments = convert_json_to_attachment(AttachmentsJSON)
+            for attachment in attachments:
+                if len(value) < 500:
+                    filename: str = attachment.filename
+                    url = attachment.url
+                    value +=f"\n[{filename[:20]}]({url})"
+            
+            embeds = convert_json_to_embeds(bot, EmbedsJSON)
+            for embed in embeds:
+                if len(value) <500:
+                    value += f"\n__**Embed**__"
+                    value += "\n" + format_embed_to_field_value(embed)
+            
+            if value != "":
+                fields.append((name,value,False))
             
         embed = auto_embed(
         type="logging",
@@ -1247,11 +1300,10 @@ async def bulk_message_delete(bot: hikari.GatewayBot, event: hikari.GuildBulkMes
                     # Ensures that a log deletion isn't recorded constantly
                     await bot.rest.create_message(channel,embed=embed)
         
-    # db.execute("UPDATE MessageLogs SET DeletedAt = ? WHERE MessageID = ?",
-    #            datetime.datetime.today(),
-    #            message_id
-    #            )
-    # db.commit()
+    db.execute(f"UPDATE MessageLogs SET DeletedAt = ? WHERE MessageID IN {tuple(event.message_ids)}",
+               datetime.datetime.today(),
+               )
+    db.commit()
 
 # Member events
 async def on_member_create(bot: hikari.GatewayBot, event: hikari.MemberCreateEvent):
@@ -1276,6 +1328,73 @@ async def on_member_create(bot: hikari.GatewayBot, event: hikari.MemberCreateEve
     if channels != None:
         for channel in channels:
             await bot.rest.create_message(channel,embed=embed)
+
+async def on_member_update(bot: hikari.GatewayBot, event: hikari.MemberUpdateEvent):
+    old_member = event.old_member
+    new_member = event.member
+    
+    if old_member is None:
+        return
+    
+    if old_member.nickname != new_member.nickname:
+        if old_member.nickname is None:
+            # Nickname has been set
+            title = f"Nickname set"
+            description = f"Nickname for <@!{new_member.id}> has been set."
+            colour = hikari.Colour(0x00FF00)
+        elif new_member.nickname is None:
+            # Nickname removed
+            title = f"Nickname removed"
+            description = f"The nickname `{old_member.nickname}` has been removed from <@{new_member.id}>."
+            colour = hikari.Colour(0xFF0000)
+        else:
+            # Nickname change
+            title = f"Nickname change"
+            description = f"`{old_member.nickname}` {CHANGE_ARROW} `{new_member.nickname}`"
+            colour = hikari.Colour(0xFFBF00)
+        embed = auto_embed(
+            type="logging",
+            author=COG_TYPE,
+            author_url = COG_LINK,
+            title = title,
+            description = description,
+            thumbnail=new_member.avatar_url or new_member.default_avatar_url,
+            colour = colour
+        )
+        channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+        if channels != None:
+            for channel in channels:
+                await bot.rest.create_message(channel,embed=embed)
+    if old_member.role_ids != new_member.role_ids:
+        if len(old_member.role_ids) > len(new_member.role_ids):
+            # Role removed
+            role_id = (list(set(old_member.role_ids)-set(new_member.role_ids)))[0]
+            title = f"Role removed"
+            description = f"<@&{role_id}> has been removed from <@{new_member.id}>."
+            colour = hikari.Colour(0xFF0000)
+
+        elif len(old_member.role_ids) < len(new_member.role_ids):
+            # Role added
+            role_id = (list(set(new_member.role_ids)-set(old_member.role_ids)))[0]
+            title = f"Role added"
+            description = f"<@&{role_id}> has been added to <@{new_member.id}>."
+            colour = hikari.Colour(0x00FF00)
+        else:
+            return
+        embed = auto_embed(
+            type="logging",
+            author=COG_TYPE,
+            author_url = COG_LINK,
+            title = title,
+            description = description,
+            thumbnail=new_member.avatar_url or new_member.default_avatar_url,
+            footer = f"Role ID: {role_id}",
+            colour = colour
+        )
+        channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+        if channels != None:
+            for channel in channels:
+                await bot.rest.create_message(channel,embed=embed)
 
 async def on_member_delete(bot: hikari.GatewayBot, event: hikari.MemberDeleteEvent):
     leave_channels = await is_log_needed(event.__class__.__name__,event.guild_id)
