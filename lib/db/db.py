@@ -178,26 +178,45 @@ def field(command, *values):
 
 
 def record(command, *values):
-	cache_output = db_cache.check_cache(command,values=(values))
-	if cache_output is not None:
-		return cache_output
-	else:
-		cur.execute(command, tuple(values))
-		output = cur.fetchone()
-		db_cache.add_to_cache(command,values,output)
-		return output
-
-
+	try:
+		cache_output = db_cache.check_cache(command,values=(values))
+		if cache_output is not None:
+			return cache_output
+		else:
+			cur.execute(command, tuple(values))
+			output = cur.fetchone()
+			db_cache.add_to_cache(command,values,output)
+			return output
+	except:
+		reload()
+		cache_output = db_cache.check_cache(command,values=(values))
+		if cache_output is not None:
+			return cache_output
+		else:
+			cur.execute(command, tuple(values))
+			output = cur.fetchone()
+			db_cache.add_to_cache(command,values,output)
+			return output
 def records(command, *values):
-	cache_output = db_cache.check_cache(command,values=(values))
-	if cache_output is not None:
-		return cache_output
-	else:
-		cur.execute(command, tuple(values))
-		output = cur.fetchall()
-		db_cache.add_to_cache(command,values,output)
-		return output
-
+	try:
+		cache_output = db_cache.check_cache(command,values=(values))
+		if cache_output is not None:
+			return cache_output
+		else:
+			cur.execute(command, tuple(values))
+			output = cur.fetchall()
+			db_cache.add_to_cache(command,values,output)
+			return output
+	except:
+		reload()
+		cache_output = db_cache.check_cache(command,values=(values))
+		if cache_output is not None:
+			return cache_output
+		else:
+			cur.execute(command, tuple(values))
+			output = cur.fetchall()
+			db_cache.add_to_cache(command,values,output)
+			return output
 
 def column(command, *values):
 	
@@ -213,11 +232,19 @@ def count(command,*values):
 
 
 def execute(command, *values):
-	cur.execute(command, tuple(map(str,values)))
+	try:
+		cur.execute(command, tuple(map(str,values)))
+	except:
+		reload()
+		cur.execute(command, tuple(map(str,values)))
 
 
 def multiexec(command, valueset):
-	cur.executemany(command, valueset)
+	try:
+		cur.executemany(command, valueset)
+	except:
+		reload()
+		cur.executemany(command, valueset)
 
 
 def scriptexec(path):
