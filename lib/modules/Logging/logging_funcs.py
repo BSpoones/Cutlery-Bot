@@ -105,7 +105,7 @@ def convert_json_to_attachment(json_data: str) -> list[hikari.Attachment] or lis
         attachments_output.append(new_attachment)
     return attachments_output
 
-def convert_json_to_embeds(bot: hikari.GatewayBot, json_data: str) -> list[hikari.Embed]:
+def convert_json_to_embeds(json_data: str) -> list[hikari.Embed]:
     """
     Converts a JSON string from a database row into an embed object
     
@@ -202,7 +202,7 @@ def convert_message_to_dict(message: hikari.Message) -> dict:
     output["MessageContent"] = message.content
     output["MessageReference"] = message.referenced_message.id if message.referenced_message else None
     output["Pinned"] = int(message.is_pinned if message.is_pinned else 0)
-    output["TTS"] = int(message.is_tts)
+    output["TTS"] = int(message.is_tts if message.is_tts else 0)
     output["EmbedsJSON"] = EmbedsJSON
     output["AttachmentsJSON"] = AttachmentsJSON
     # Reactions won't be added on MessageCreate, but will be added on reaction events
@@ -226,7 +226,7 @@ async def ban_create(bot: hikari.GatewayBot, event: hikari.BanCreateEvent):
     ban = await event.fetch_ban()
     target = ban.user
     reason = ban.reason if ban.reason else "No reason"
-    description = f"{target.mention} ({str(target)}) **has been banned!**\nReason: `{reason}`"
+    description = f"{target.mention} ({str(target)}) **was banned!**\nReason: `{reason}`"
     
     embed = auto_embed(
         type="logging",
@@ -249,7 +249,7 @@ async def ban_delete(bot: hikari.GatewayBot, event: hikari.BanDeleteEvent):
     Will log the unbanned user
     """
     target = event.user
-    description = f"{target.mention} ({str(target)}) **has been unbanned!**"
+    description = f"{target.mention} ({str(target)}) **was unbanned!**"
     
     embed = auto_embed(
         type="logging",
@@ -434,11 +434,11 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
             if removed_permission_id in guild_role_ids:
                 # Guarenteed role
                 name = "Role removed"
-                value = f"<@&{removed_permission_id}> has been removed"
+                value = f"<@&{removed_permission_id}> was removed"
             else:
                 # Guarenteed user
                 name = "Member removed"
-                value = f"<@{removed_permission_id}> has been removed"
+                value = f"<@{removed_permission_id}> was removed"
             fields.append((name,value,False))  
             
         elif len(old_perms) < len(new_perms):
@@ -449,11 +449,11 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
             if added_permission_id in guild_role_ids:
                 # Guarenteed role
                 name = "Role removed"
-                value = f"<@&{added_permission_id}> has been added"
+                value = f"<@&{added_permission_id}> was added"
             else:
                 # Guarenteed user
                 name = "Member added"
-                value = f"<@{added_permission_id}> has been added"
+                value = f"<@{added_permission_id}> was added"
             fields.append((name,value,False))
 
         else:
@@ -592,7 +592,7 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
         author=COG_TYPE,
         author_url = COG_LINK,
         title = title,
-        description = f"<#{new_channel.id}> has been updated",
+        description = f"<#{new_channel.id}> was updated",
         fields = fields,
         thumbnail=guild.icon_url,
         footer = f"ID: {new_channel.id}",
@@ -700,9 +700,9 @@ async def on_invite_delete(bot: hikari.GatewayBot, event: hikari.InviteDeleteEve
     title = ":wastebasket: Invite deleted"
     fields = []
     if old_invite is None:
-        description = f"`{event.code}` has been deleted"
+        description = f"`{event.code}` was deleted"
     else:
-        description = f"`{event.code}` has been deleted"
+        description = f"`{event.code}` was deleted"
         
         if old_invite.max_uses:
             name = "Uses"
@@ -763,7 +763,7 @@ async def guild_reaction_add(bot: hikari.GatewayBot, event: hikari.GuildReaction
     
     message_link = f"https://discord.com/channels/{guild_id}/{channel_id}/{message_id}"
 
-    description = f"`{emoji_name}` has been added by <@{remover_id}>"
+    description = f"`{emoji_name}` was added by <@{remover_id}>"
     if is_animated:
         # NOTE: This will always work since emoji.url always gives a PNG URL
         emoji_url = emoji_url[:-3]+"gif" # Replaces .png with .gif
@@ -814,7 +814,7 @@ async def guild_reaction_remove(bot: hikari.GatewayBot,event:hikari.GuildReactio
     
     message_link = f"https://discord.com/channels/{guild_id}/{channel_id}/{message_id}"
 
-    description = f"`{emoji_name}` has been removed by <@{remover_id}>"
+    description = f"`{emoji_name}` was removed by <@{remover_id}>"
     if is_animated:
         # See above function for explanation
         emoji_url = emoji_url[:-3]+"gif"
@@ -869,7 +869,7 @@ async def role_create(bot: hikari.GatewayBot, event: hikari.RoleCreateEvent):
     
     # TODO: Show new role info if new role isn't "new role"
     title = "Role created"
-    description = "A new role has been created"
+    description = "A new role was created"
     embed = auto_embed(
         type="logging",
         author=COG_TYPE,
@@ -898,7 +898,7 @@ async def role_update(bot: hikari.GatewayBot, event: hikari.RoleUpdateEvent):
         return
     
     title = f"Role update"
-    description = f"<@&{new_role.id}> (`{new_role.name}`) has been updated."
+    description = f"<@&{new_role.id}> (`{new_role.name}`) was updated."
     fields = []
     # Name change
     if old_role.name != new_role.name:
@@ -983,7 +983,7 @@ async def role_delete(bot: hikari.GatewayBot, event: hikari.RoleDeleteEvent):
         return
     role_id = event.role_id
     title = "Role deleted"
-    description = f"`{old_role.name}` has been deleted."
+    description = f"`{old_role.name}` was deleted."
     embed = auto_embed(
         type="logging",
         author=COG_TYPE,
@@ -1067,7 +1067,7 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
         old_attachments_json: str = old_message[8]
         old_attachments = convert_json_to_attachment(old_attachments_json)
         old_embeds_json: dict = old_message[9]
-        old_embeds = convert_json_to_embeds(bot,old_embeds_json)
+        old_embeds = convert_json_to_embeds(old_embeds_json)
         old_pinned: bool = old_message[6]
     else:
         old_content = old_message.content
@@ -1238,7 +1238,7 @@ async def message_delete(bot: hikari.GatewayBot,event: hikari.GuildMessageDelete
         old_attachments_json: str = old_message[8]
         old_attachments = convert_json_to_attachment(old_attachments_json)
         old_embeds_json: dict = old_message[9]
-        old_embeds = convert_json_to_embeds(bot,old_embeds_json)
+        old_embeds = convert_json_to_embeds(old_embeds_json)
     else:
         old_content = old_message.content
         old_attachments = list(old_message.attachments) if old_message.attachments else []
@@ -1364,7 +1364,7 @@ async def bulk_message_delete(bot: hikari.GatewayBot, event: hikari.GuildBulkMes
                     url = attachment.url
                     value +=f"\n[{filename[:20]}]({url})"
             
-            embeds = convert_json_to_embeds(bot, EmbedsJSON)
+            embeds = convert_json_to_embeds(EmbedsJSON)
             for embed in embeds:
                 if len(value) <500:
                     value += f"\n__**Embed**__"
@@ -1437,14 +1437,14 @@ async def on_member_update(bot: hikari.GatewayBot, event: hikari.MemberUpdateEve
     
     if old_member.nickname != new_member.nickname:
         if old_member.nickname is None:
-            # Nickname has been set
+            # Nickname was set
             title = f"Nickname set"
-            description = f"Nickname for <@!{new_member.id}> has been set."
+            description = f"Nickname for <@!{new_member.id}> was set."
             colour = hikari.Colour(GREEN)
         elif new_member.nickname is None:
             # Nickname removed
             title = f"Nickname removed"
-            description = f"The nickname `{old_member.nickname}` has been removed from <@{new_member.id}>."
+            description = f"The nickname `{old_member.nickname}` was removed from <@{new_member.id}>."
             colour = hikari.Colour(RED)
         else:
             # Nickname change
@@ -1469,14 +1469,14 @@ async def on_member_update(bot: hikari.GatewayBot, event: hikari.MemberUpdateEve
             # Role removed
             role_id = (list(set(old_member.role_ids)-set(new_member.role_ids)))[0]
             title = f"Role removed"
-            description = f"<@&{role_id}> has been removed from <@{new_member.id}>."
+            description = f"<@&{role_id}> was removed from <@{new_member.id}>."
             colour = hikari.Colour(RED)
 
         elif len(old_member.role_ids) < len(new_member.role_ids):
             # Role added
             role_id = (list(set(new_member.role_ids)-set(old_member.role_ids)))[0]
             title = f"Role added"
-            description = f"<@&{role_id}> has been added to <@{new_member.id}>."
+            description = f"<@&{role_id}> was added to <@{new_member.id}>."
             colour = hikari.Colour(GREEN)
         else:
             return
