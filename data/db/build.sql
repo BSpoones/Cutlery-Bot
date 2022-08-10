@@ -126,15 +126,15 @@ ALTER TABLE MessageLogs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode
 
 -- Stores valid log actions
 CREATE TABLE IF NOT EXISTS LogAction (
-  ActionID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  ActionName VARCHAR(36) NOT NULL UNIQUE
+    ActionID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    ActionName VARCHAR(36) NOT NULL UNIQUE
 );
 
 -- Stores channel instances
 CREATE TABLE IF NOT EXISTS LogChannel (
-  LogChannelID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  GuildID VARCHAR(19)  NOT NULL,
-  ChannelID VARCHAR(19)  NOT NULL UNIQUE
+    LogChannelID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    GuildID VARCHAR(19)  NOT NULL,
+    ChannelID VARCHAR(19)  NOT NULL UNIQUE
 );
 
 -- Stores the actions which should be logged within each channel
@@ -144,4 +144,13 @@ CREATE TABLE IF NOT EXISTS ChannelLogAction (
   FOREIGN KEY (LogChannelID) REFERENCES LogChannel (LogChannelID) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (ActionID) REFERENCES LogAction (ActionID) ON DELETE CASCADE ON UPDATE CASCADE,
   PRIMARY KEY (LogChannelID, ActionID)
+);
+
+CREATE TABLE IF NOT EXISTS AutoPurge (
+  AutoPurgeID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  GuildID BIGINT(19) NOT NULL,
+  ChannelID BIGINT(19), -- Can be Null if autopurge is guild wide
+  Cutoff INT(6) NOT NULL, -- Stored in seconds (e.g. 10d1h = 867,600 seconds), max limit is 1209600s (14d)
+  IgnorePinned BOOL NOT NULL,
+  StatusLink VARCHAR(85) NOT NULL
 )
