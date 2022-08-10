@@ -2,7 +2,7 @@
 /big command
 Developed by Bspoones - Dec 2021
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility#Big
+Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#Big
 """
 
 import hikari, tanjun, requests,logging

@@ -2,7 +2,7 @@
 /version command
 Developed by Bspoones - Dec 2021
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility#Version
+Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#Version
 """
 import tanjun
 from lib.core.bot import Bot

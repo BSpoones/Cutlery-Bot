@@ -2,7 +2,7 @@
 /remindin command
 Developed by Bspoones - Jan 2022
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Reminder#In
+Documentation: https://www.bspoones.com/Cutlery-Bot/Reminder#In
 """
 
 import tanjun, hikari, re, datetime

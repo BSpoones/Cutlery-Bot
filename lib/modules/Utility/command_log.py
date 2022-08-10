@@ -2,7 +2,7 @@
 /commandlogs command
 Developed by Bspoones - Jan 2022
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility#CommandLogs
+Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#CommandLogs
 """
 import hikari, tanjun, math, datetime
 from hikari.embeds import Embed

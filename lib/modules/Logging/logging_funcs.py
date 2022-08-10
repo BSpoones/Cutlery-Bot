@@ -750,7 +750,9 @@ async def guild_reaction_add(bot: hikari.GatewayBot, event: hikari.GuildReaction
         it isn't animated
         """
         emoji = hikari.CustomEmoji.parse(f"<a:{emoji_name}:{emoji_id}>")
+        print("requests module is being used")
         status_code = requests.get(emoji.url).status_code
+        print("requests module worked")
         if status_code == 415:
             # Means emoji is not animated
             emoji = hikari.CustomEmoji.parse(f"<:{emoji_name}:{emoji_id}>")
@@ -801,7 +803,9 @@ async def guild_reaction_remove(bot: hikari.GatewayBot,event:hikari.GuildReactio
         emoji_name = event.emoji_name
         emoji_id = event.emoji_id
         emoji = hikari.CustomEmoji.parse(f"<a:{emoji_name}:{emoji_id}>")
+        print("request")
         status_code = requests.get(emoji.url).status_code
+        print("request works")
         if status_code == 415:
             # Means emoji is not animated
             emoji = hikari.CustomEmoji.parse(f"<:{emoji_name}:{emoji_id}>")

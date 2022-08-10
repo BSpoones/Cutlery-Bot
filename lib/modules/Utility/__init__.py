@@ -2,7 +2,7 @@
 Utility module
 Developed by Bspoones - Dec 2021
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility
+Documentation: https://www.bspoones.com/Cutlery-Bot/Utility
 """
 
 COG_TYPE = "Utility"

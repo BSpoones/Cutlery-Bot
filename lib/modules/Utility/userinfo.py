@@ -2,7 +2,7 @@
 /userinfo command
 Developed by Bspoones - Dec 2021 - May 2022
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility#Userinfo
+Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#Userinfo
 """
 import hikari, tanjun
 from lib.core.bot import Bot

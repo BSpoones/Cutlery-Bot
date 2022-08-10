@@ -1,7 +1,7 @@
 # Cutlery Bot
 Cutlery Bot (CB) is the fourth iteration of a multipurpose Discord bot devloped in Python3.10 with [hikari-py](https://github.com/hikari-py/hikari) and [tanjun](https://github.com/FasterSpeeding/Tanjun).
 
-Other doccumentation and tutorials can be found [here](https://www.bspoones.com/)
+Other documentation and tutorials can be found [here](https://www.bspoones.com/)
 --------
 
 Planned features:
@@ -57,7 +57,7 @@ The Timetable module is responsible for all parts of the bot's handling of lesso
 
 | Command | Args | Description |
 |---------|------|-------------|
-| Current lesson | [group] | Shows the current lesson for you or a given group |
+| Current lesson | [group] | Sh  ows the current lesson for you or a given group |
 | Next lesson | [group] | Shows the next lesson for you or a given group|
 | Schedule | [day] [group] | Shows your schedule for a given day |
 | AddHoliday | (start) (end) [group] | Adds a holiday for a group |

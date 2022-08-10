@@ -2,7 +2,7 @@
 /schedule command
 Developed by Bspoones - Feb 2022
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Timetable#Schedule
+Documentation: https://www.bspoones.com/Cutlery-Bot/Timetable#Schedule
 """
 
 from xml.dom import NotFoundErr

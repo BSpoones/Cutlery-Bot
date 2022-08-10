@@ -2,7 +2,7 @@
 Logging commands
 Developed by Bspoones - May 2022 - August 2022
 For use in Cutlery Bot and TheKBot2
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Logging#LoggingCommands
+Documentation: https://www.bspoones.com/Cutlery-Bot/Logging#LoggingCommands
 """
 
 import tanjun, hikari

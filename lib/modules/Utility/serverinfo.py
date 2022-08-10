@@ -2,7 +2,7 @@
 /serverinfo command
 Developed by Bspoones - Dec 2021
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Utility#Serverinfo
+Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#Serverinfo
 """
 
 

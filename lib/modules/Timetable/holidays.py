@@ -2,7 +2,7 @@
 Holidays commands
 Developed by Bspoones - Apr 2022
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Timetable#Holidays
+Documentation: https://www.bspoones.com/Cutlery-Bot/Timetable#Holidays
 """
 
 from multiprocessing import AuthenticationError

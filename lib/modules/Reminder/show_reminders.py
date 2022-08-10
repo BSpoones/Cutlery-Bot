@@ -2,7 +2,7 @@
 /showreminders command
 Developed by Bspoones - Jan 2021
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Reminder#Show
+Documentation: https://www.bspoones.com/Cutlery-Bot/Reminder#Show
 """
 
 import tanjun, hikari, math, datetime

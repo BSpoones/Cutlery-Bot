@@ -2,7 +2,7 @@
 Timetable funcs class
 Developed by Bspoones - Feb 2022
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Timetable
+Documentation: https://www.bspoones.com/Cutlery-Bot/Timetable
 """
 import asyncio, random, re, hikari, tanjun, datetime, validators
 from apscheduler.schedulers.asyncio import AsyncIOScheduler

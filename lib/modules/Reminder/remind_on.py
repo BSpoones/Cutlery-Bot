@@ -2,7 +2,7 @@
 /remindon command
 Developed by Bspoones - Jan 2021
 Solely for use in the Cutlery Bot discord bot
-Doccumentation: https://www.bspoones.com/Cutlery-Bot/Reminder#On
+Documentation: https://www.bspoones.com/Cutlery-Bot/Reminder#On
 """
 
 
