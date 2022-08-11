@@ -87,7 +87,11 @@ def convert_json_to_attachment(json_data: str) -> list[hikari.Attachment] or lis
     
     json_data = json_data.replace("'",'"') # json.loads() requires "
     attachment_json = json.loads(json_data)
-    attachments = attachment_json["Attachments"]
+    try:
+        attachments = attachment_json["Attachments"]
+    except:
+        print(attachment_json)
+        return []
     attachments_output = []
     for attachment in attachments:
         new_attachment = hikari.Attachment(
@@ -114,7 +118,11 @@ def convert_json_to_embeds(json_data: str) -> list[hikari.Embed]:
     """
     json_data = json_data.replace("'",'"') # json.loads() requires "
     embed_json = json.loads(json_data)
-    embeds = embed_json["Embeds"]
+    try:
+        embeds = embed_json["Embeds"]
+    except:
+        print(embed_json)
+        return []
     embeds_output = []
     for embed in embeds:
         new_embed = auto_embed(
@@ -1339,7 +1347,7 @@ async def bulk_message_delete(bot: hikari.GatewayBot, event: hikari.GuildBulkMes
     divided_messages = [actual_messages[i * DIVISION_AMOUNT:(i + 1) * DIVISION_AMOUNT] for i in range((len(actual_messages) + DIVISION_AMOUNT - 1) // DIVISION_AMOUNT )]
     for i,messages in enumerate(divided_messages,start=1):
         if len(divided_messages) > 1:
-            title = f"Bulk message delete  (Page {i} of {len(divided_messages)})"
+            title = f"Bulk message delete  |  Page {i}/{len(divided_messages)}"
         else:
             title = f"Bulk message delete"
         if i == 1:
