@@ -5,7 +5,7 @@ For use in Cutlery Bot and TheKBot2
 Documentation: https://www.bspoones.com/Cutlery-Bot/AutoPurge
 """
 
-__version__ = "0.0"
+__version__ = "1.0"
 
 COG_TYPE = "AutoPurge"
 COG_LINK = "http://www.bspoones.com/Cutlery-Bot/AutoPurge"
