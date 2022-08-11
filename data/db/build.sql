@@ -146,11 +146,13 @@ CREATE TABLE IF NOT EXISTS ChannelLogAction (
   PRIMARY KEY (LogChannelID, ActionID)
 );
 
+
 CREATE TABLE IF NOT EXISTS AutoPurge (
   AutoPurgeID BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  GuildID BIGINT(19) NOT NULL,
-  ChannelID BIGINT(19), -- Can be Null if autopurge is guild wide
+  GuildID VARCHAR(19) NOT NULL,
+  ChannelID VARCHAR(19) NOT NULL,
   Cutoff INT(6) NOT NULL, -- Stored in seconds (e.g. 10d1h = 867,600 seconds), max limit is 1209600s (14d)
   IgnorePinned BOOL NOT NULL,
-  StatusLink VARCHAR(85) NOT NULL
+  StatusLink VARCHAR(19) NOT NULL, -- Message ID of the newest status message
+  Enabled BOOL NOT NULL
 )
