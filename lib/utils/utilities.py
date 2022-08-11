@@ -1,6 +1,7 @@
 from data.bot.data import ACTIVITY_NAME, OWNER_IDS, TRUSTED_IDS, VERSION
 from tanjun.abc import Context as Context
-import datetime, hikari, tanjun, logging
+from dateutil.relativedelta import relativedelta
+import datetime, hikari, tanjun, logging, re
 
 def next_occourance_of_time(time_input: datetime.time) -> datetime.datetime:
     """
@@ -181,3 +182,57 @@ def auto_embed(**kwargs):
                     icon=ctx.member.avatar_url,
                 )
         return embed
+    
+    
+def parse_timeframe_from_string(input: str) -> int:
+    """
+    Converts a string timeframe into an integer amount of
+    seconds
+    
+    Example
+    -------
+    1d1m1m = 1 day, 1 hour, 1 minute = (86,400 + 3600 + 60) = 90060 seconds
+    """
+    
+    # re patterns
+    MATCH_PATTERN =  "(?:([0-9]+)\s*y[a-z]*[,\s]*)?(?:([0-9]+)\s*mo[a-z]*[,\s]*)?(?:([0-9]+)\s*w[a-z]*[,\s]*)?(?:([0-9]+)\s*d[a-z]*[,\s]*)?(?:([0-9]+)\s*h[a-z]*[,\s]*)?(?:([0-9]+)\s*m[a-z]*[,\s]*)?(?:([0-9]+)\s*(?:s[a-z]*)?)?"
+    VALIDATION_PATTERN = "^([0-9]+y)?([0-9]+y)?([0-9]+mo)?([0-9]+w)?([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s?)?$"
+    
+    # Input validation
+    if not bool(re.match(VALIDATION_PATTERN,input)):
+        raise ValueError(f"Invalid time entered `{input}`\nUse any of the following `y,mo,w,d,h,m,s`\nExample: `4h15m10s` = 4 hours 15 mins 10 seconds from now")
+    time_pattern = re.compile(MATCH_PATTERN,2)
+    match = time_pattern.match(input)
+    
+    years, months, weeks, days, hours, minutes, seconds = 0,0,0,0,0,0,0
+    
+    if match.group(1) is not None:
+        years = match.group(1)
+    if match.group(2) is not None:
+        months = match.group(2)
+    if match.group(3) is not None:
+        weeks = match.group(3)
+    if match.group(4) is not None:
+        days = match.group(4)
+    if match.group(5) is not None:
+        hours = match.group(5)
+    if match.group(6) is not None:
+        minutes = match.group(6)
+    if match.group(7) is not None:
+        seconds = match.group(7)
+    weeks = int(weeks) + (52*int(years))
+    
+    current_datetime = datetime.datetime.today()
+    new_datetime = current_datetime + datetime.timedelta(
+        weeks=int(weeks),
+        days=int(days),
+        hours=int(hours),
+        minutes=int(minutes),
+        seconds=int(seconds)
+        ) + relativedelta(months=int(months))
+    
+    current_timestamp = current_datetime.timestamp()
+    new_timestamp = new_datetime.timestamp()
+    
+    difference = int(new_timestamp-current_timestamp)
+    return difference
