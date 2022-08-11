@@ -25,8 +25,20 @@ The Admin module consists of commands that directly affect the bot itself. These
 | Command | Args | Description |
 |---------|------|-------------|
 | Closebot| | Closes the bot (Owner only) |
-| RestartBot | | | Restarts the bot (Owner only) |
+| RestartBot | | Restarts the bot (Owner only) |
 | SetActivity | (type) (activity) [link] [permanent] | Sets the activity for the bot |
+
+**AutoPurge**
+
+The AutoPurge module is responsible for automatically purging messages sent earlier than x amount of time.
+
+| Command | Args | Description |
+|---------|------|-------------|
+| autopurge setup | (cutoff) [channel] [purge_pinned] [guild_wide] | Sets up an AutoPurge instance in a given channel or across an entire guild |
+| autopurge cutoff | (cutoff) [channel] | Sets a new AutoPurge cutoff |
+| autopurge enable | [channel] | Enables AutoPurge |
+| autopurge disable | [channel] | Disables AutoPurge |
+| autopurge status | [channel] | Shows the current AutoPurge status |
 
 **Logging**
 
@@ -34,10 +46,10 @@ The Logging module is responsible for logging any and all guild events (such as 
 
 | Command | Args | Description |
 |---------|------|-------------|
-| Addlogger | (preset) [channel] | Creates a logging instance for a given guild channel with a preset | 
-| AddLoggingEvent |  | |
-| RemoveLoggingEvent | | |
-| RemoveLogger | | |
+| logging enable | (preset) [channel] | Sets up a logging instance for a given guild channel with a preset | 
+| logging add | (preset) [channel] | Adds a specific discord event to a logging instance |
+| logging remove | (preset) [channel] | Removes a specific discord event from a logging instance |
+| logging disable | [channel] | Removes the logging instance for a given guild channel |
 
 **Reminder**
 
