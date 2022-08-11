@@ -15,6 +15,8 @@ from mysql.connector.errors import InterfaceError
 from ...db import db
 
 logging_component = tanjun.Component()
+logging_group = logging_component.with_slash_command(tanjun.slash_command_group("logging","Logging module"))
+
 NL = "\n"
 
 LOG_PRESETS = {
@@ -72,12 +74,11 @@ EVENT_PRESETS = {
     ]
 }
 
-
-@logging_component.add_slash_command
+@logging_group.with_command
 @tanjun.with_str_slash_option("preset","Choose to log a preset of choices", choices=LOG_PRESETS.keys())
-@tanjun.with_channel_slash_option("channel","Select a channel to send the message in",default= None)
-@tanjun.as_slash_command("addlogger","Adds a logging instance to the current or a chosen text channel")
-async def addlogger_command(ctx: SlashContext, preset, channel: hikari.InteractionChannel = None):
+@tanjun.with_channel_slash_option("channel","Select an output channel",default= None)
+@tanjun.as_slash_command("enable","Sets up a logging instance to a channel")
+async def logging_enable_command(ctx: SlashContext, preset, channel: hikari.InteractionChannel = None):
     guild = ctx.get_guild()
     member = ctx.member
     if channel is None:
@@ -105,7 +106,7 @@ async def addlogger_command(ctx: SlashContext, preset, channel: hikari.Interacti
     # Presence check of the proposed channel for a logging instance
     instance = db.records("SELECT * FROM LogChannel WHERE GuildID = ? AND ChannelID = ?",str(guild.id),str(channel.id))
     if instance != []:
-        raise LookupError("This channel already has a logging instance.\nUse `/addloggerevent` to add events to log.")
+        raise LookupError("This channel already has a logging instance.\nUse `/logging add` to add events to log.")
     
     # Assuming the user has perms and there isn't a logging instance for said channel
     db.execute("INSERT INTO LogChannel(GuildID,ChannelID) VALUES (?,?)", str(guild.id),str(channel.id))
@@ -127,11 +128,11 @@ async def addlogger_command(ctx: SlashContext, preset, channel: hikari.Interacti
     
     await ctx.edit_initial_response(embed=embed)
 
-@logging_component.add_slash_command
+@logging_group.with_command
 @tanjun.with_str_slash_option("preset","Choose to log a preset of choices", choices=EVENT_PRESETS.keys())
-@tanjun.with_channel_slash_option("channel","Select a channel",default= None)
-@tanjun.as_slash_command("addloggerevent","Adds an event to log in a pre existing log channel")
-async def addloggerevent_command(ctx: SlashContext, preset, channel: hikari.InteractionChannel = None):  
+@tanjun.with_channel_slash_option("channel","Select the logging channel",default= None)
+@tanjun.as_slash_command("add","Adds an event group to log in a logging instance")
+async def logging_add_command(ctx: SlashContext, preset, channel: hikari.InteractionChannel = None):  
     guild = ctx.get_guild()
     member = ctx.member
     if channel is None:
@@ -159,7 +160,7 @@ async def addloggerevent_command(ctx: SlashContext, preset, channel: hikari.Inte
     # Presence check of the proposed channel for a logging instance
     instance = db.records("SELECT * FROM LogChannel WHERE GuildID = ? AND ChannelID = ?",str(guild.id),str(channel.id))
     if instance == []:
-        raise LookupError("This channel does not have a logging instance setup, use `/addlogger` to set one up.")
+        raise LookupError("This channel does not have a logging instance setup, use `/logging setup` to set one up.")
     
     # Adding preset permissions
     events = EVENT_PRESETS[preset]
@@ -192,10 +193,10 @@ async def addloggerevent_command(ctx: SlashContext, preset, channel: hikari.Inte
     
     await ctx.edit_initial_response(embed=embed)
 
-@logging_component.add_slash_command
+@logging_group.with_command
 @tanjun.with_channel_slash_option("channel","Select a channel to send the message in",default= None)
-@tanjun.as_slash_command("removelogger","Removes a logging instance on a current or chosen text channel")
-async def removelogger_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):
+@tanjun.as_slash_command("disable","Disables a logging instance")
+async def logging_disable_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):
     guild = ctx.get_guild()
     member = ctx.member
     if channel is None:
@@ -219,7 +220,7 @@ async def removelogger_command(ctx: SlashContext, channel: hikari.InteractionCha
     # Presence check
     log_channel = db.record("SELECT * FROM LogChannel WHERE ChannelID = ?",str(channel.id))
     if log_channel is None:
-        raise LookupError("No logging instance found in this channel. Use `/addlogger` to create a logging instance")
+        raise LookupError("No logging instance found in this channel. Use `/logging setup` to create a logging instance")
     
     db.execute("DELETE FROM LogChannel WHERE ChannelID = ?",str(channel.id))
     db.commit()
@@ -229,17 +230,17 @@ async def removelogger_command(ctx: SlashContext, channel: hikari.InteractionCha
         author=COG_TYPE,
         author_url = COG_LINK,
         title = ":x: Logging instance removed",
-        description = f"Logging instance bound to <#{channel.id}> has been removed",
+        description = f"Logging instance bound to <#{channel.id}> has been disabled.\n",
         ctx=ctx
     )
     
     await ctx.edit_initial_response(embed=embed)
 
-@logging_component.add_slash_command
+@logging_group.with_command
 @tanjun.with_str_slash_option("preset","Choose to remove a preset of choices", choices=EVENT_PRESETS.keys())
 @tanjun.with_channel_slash_option("channel","Select a channel",default= None)
-@tanjun.as_slash_command("removeloggerevent","Removes an event to log in a pre existing log channel")
-async def removeloggerevent_command(ctx: SlashContext, preset, channel: hikari.InteractionChannel = None):  
+@tanjun.as_slash_command("remove","Removes an event group to log in a logging instance")
+async def logging_remove_command(ctx: SlashContext, preset, channel: hikari.InteractionChannel = None):  
     guild = ctx.get_guild()
     member = ctx.member
     if channel is None:
@@ -263,7 +264,7 @@ async def removeloggerevent_command(ctx: SlashContext, preset, channel: hikari.I
     # Presence check of the proposed channel for a logging instance
     instance = db.records("SELECT * FROM LogChannel WHERE GuildID = ? AND ChannelID = ?",str(guild.id),str(channel.id))
     if instance == []:
-        raise LookupError("This channel does not have a logging instance setup, use `/addlogger` to set one up.")
+        raise LookupError("This channel does not have a logging instance setup, use `/logging setup` to set one up.")
     
     # Adding preset permissions
     events = EVENT_PRESETS[preset]
