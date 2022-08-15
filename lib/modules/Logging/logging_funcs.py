@@ -126,19 +126,19 @@ def convert_json_to_embeds(json_data: str) -> list[hikari.Embed]:
     embeds_output = []
     for embed in embeds:
         new_embed = auto_embed(
-            title = embed["title"] if embed["title"] else None,
-            description = embed["description"] if embed["description"] else None,
-            url = embed["url"] if embed["url"] else None,
-            colour = hikari.Colour(int(embed["colour"],16)) if embed["colour"] else None,
-            footer = embed["footer"][0] if embed["footer"] else None,
-            footericon = embed["footer"][1] if embed["footer"] else None,
-            image = embed["image"] if embed["image"] else None,
-            thumbnail = embed["thumbnail"] if embed["thumbnail"] else None,
-            video = embed["video"] if embed["video"] else None,
-            author = embed["author"][0] if embed["author"] else None,
-            author_url = embed["author"][1] if embed["author"] else None,
-            author_icon = embed["author"][2] if embed["author"] else None,
-            fields = embed["Fields"] if embed["Fields"] else [],
+            title = embed["title"] if "title" in embed else None,
+            description = embed["description"] if "description" in embed else None,
+            url = embed["url"] if "url" in embed else None,
+            colour = hikari.Colour(int(embed["colour"],16)) if "colour" in embed else None,
+            footer = embed["footer"][0] if "footer" in embed else None,
+            footericon = embed["footer"][1] if "footer" in embed else None,
+            image = embed["image"] if "image" in embed else None,
+            thumbnail = embed["thumbnail"] if "thumbnail" in embed else None,
+            video = embed["video"] if "video" in embed else None,
+            author = embed["author"][0] if "author" in embed else None,
+            author_url = embed["author"][1] if "author" in embed else None,
+            author_icon = embed["author"][2] if "author" in embed else None,
+            fields = embed["Fields"] if "Fields" in embed else [],
         )
         embeds_output.append(new_embed)
     return embeds_output
