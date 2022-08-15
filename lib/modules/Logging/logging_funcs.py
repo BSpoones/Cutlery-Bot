@@ -300,6 +300,7 @@ async def emoji_update(bot: hikari.GatewayBot, event: hikari.EmojisUpdateEvent):
             author_url = COG_LINK,
             title = f"Emoji created!",
             description = f"**Emoji name:** `{emoji.name}`\n**Animated?** {emoji.is_animated}",
+            footer = f"Emoji ID: {emoji.id}",
             thumbnail=emoji.url,
             colour = hikari.Colour(GREEN)
         )
@@ -313,6 +314,7 @@ async def emoji_update(bot: hikari.GatewayBot, event: hikari.EmojisUpdateEvent):
             author_url = COG_LINK,
             title = f"Emoji removed!",
             description = f"**Emoji name:** `{emoji.name}`\n**Created at: **<t:{int(emoji.created_at.timestamp())}:f>\n**Animated?** {emoji.is_animated}",
+            footer = f"Emoji ID: {emoji.id}",
             thumbnail=emoji.url,
             colour = hikari.Colour(RED)
         )
@@ -326,6 +328,7 @@ async def emoji_update(bot: hikari.GatewayBot, event: hikari.EmojisUpdateEvent):
             author_url = COG_LINK,
             title = f"Emoji name change",
             description = f"**Old name:** `{old_emoji.name}`\n**New name: **`{new_emoji.name}`\n**Created at: **<t:{int(old_emoji.created_at.timestamp())}:f>\n**Animated?** {new_emoji.is_animated}",
+            footer = f"Emoji ID: {emoji.id}",
             thumbnail=new_emoji.url,
             colour = hikari.Colour(AMBER)
         )
