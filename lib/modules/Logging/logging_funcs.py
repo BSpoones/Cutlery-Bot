@@ -1098,17 +1098,21 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
     if old_pinned != new_message.is_pinned:
         # Pinned
         make_embed = True
+        if new_message.content is None:
+            message_type = "Embed"
+        else:
+            message_type = "Message"
         if not old_pinned and new_message.is_pinned:
-            title = f":pushpin: Message pinned in {channel.name}"
+            title = f":pushpin: {message_type} pinned in {channel.name}"
             colour = hikari.Colour(GREEN)
             
         elif old_pinned and not new_message.is_pinned:
-            title = f":pushpin: Message unpinned in {channel.name}"
+            title = f":pushpin: {message_type} unpinned in {channel.name}"
             colour = hikari.Colour(RED)
         else:
             make_embed = False
         if make_embed:
-            description = f"{new_message.content}"
+            description = new_message.content if new_message.content else format_embed_to_field_value(embed=new_message.embeds[0])
             embed = auto_embed(
                 type="logging",
                 author=COG_TYPE,
@@ -1139,11 +1143,32 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
         name = f"Content change"
         if old_content == "None":
             old_content = ""
+        if old_content.startswith("https://tenor.com/"):
+            return # Prevents a link turning into an embed from logging
         if len(old_content) + len(new_content) > 996:
-            old_content = old_content[:494] + ("..." if len(old_content) > 494 else "")
-            new_content = new_message.content[:494] + ("..." if len(new_content) > 494 else "")
-        value = f"**Original**: {old_content}\n\n**Edited**: {new_content}"
+            old_content = old_content[:1000] + ("..." if len(old_content) > 1000 else "")
+            new_content = new_message.content[:1000] + ("..." if len(new_content) > 1000 else "")
+            old_count_triple = old_content.count("```")
+            old_count_single = old_content.count("`")
+            new_count_triple = new_content.count("```")
+            new_count_single = new_content.count("`")
+            if old_count_triple %2 != 0: # If there is an opening ``` and not a closing ```
+                old_content += "```"
+            elif old_count_single %2 != 0: # If there is an opening ` and not a closing `
+                old_content += "`"
+            if new_count_triple %2 != 0: # If there is an opening ``` and not a closing ```
+                new_content += "```"
+            elif new_count_single %2 != 0: # If there is an opening ` and not a closing `
+                new_content += "`"
+        
+        name = f"Original content"
+        value = old_content
         fields.append((name,value,False))
+        
+        name = f"Edited content"
+        value = new_content
+        fields.append((name,value,False))
+        
     
     # Attachment change
     if old_attachments != new_message.attachments:
