@@ -290,6 +290,8 @@ async def emoji_update(bot: hikari.GatewayBot, event: hikari.EmojisUpdateEvent):
     # Checking against IDs to avoid catching edited emoji
     added_emojis = [emoji_id for emoji_id in new_emoji_ids if emoji_id not in old_emoji_ids]
     removed_emojis = [emoji_id for emoji_id in old_emoji_ids if emoji_id not in new_emoji_ids]
+    
+    
     # Added emoji
     if added_emojis != []:
         emoji_index = new_emoji_ids.index(added_emojis[0]) # Only one emoji can be removed at a time
@@ -750,6 +752,7 @@ async def guild_reaction_add(bot: hikari.GatewayBot, event: hikari.GuildReaction
         emoji_mention = event.emoji_name.mention
         emoji_name = event.emoji_name
         emoji = hikari.UnicodeEmoji.parse(emoji_mention)
+        emoji_id = f"UNICODE EMOJI"
         is_animated = False
     except:
         # Custom emoji
@@ -788,6 +791,7 @@ async def guild_reaction_add(bot: hikari.GatewayBot, event: hikari.GuildReaction
         title = f"Reaction added",
         url = message_link,
         description = description,
+        footer = f"Emoji ID: {emoji_id}",
         thumbnail = emoji_url,
         colour = hikari.Colour(GREEN)
         )
@@ -808,6 +812,7 @@ async def guild_reaction_remove(bot: hikari.GatewayBot,event:hikari.GuildReactio
         emoji_mention = event.emoji_name.mention
         emoji_name = event.emoji_name
         emoji = hikari.UnicodeEmoji.parse(emoji_mention)
+        emoji_id = f"UNICODE EMOJI"
         is_animated = False
     except:
         # Custom emoji
@@ -840,6 +845,7 @@ async def guild_reaction_remove(bot: hikari.GatewayBot,event:hikari.GuildReactio
         title = f"Reaction removed",
         url = message_link,
         description = description,
+        footer = f"Emoji ID: {emoji_id}",
         thumbnail = emoji_url,
         colour = hikari.Colour(RED)
         )
@@ -1396,7 +1402,13 @@ async def bulk_message_delete(bot: hikari.GatewayBot, event: hikari.GuildBulkMes
             message_content = message["MessageContent"] if message["MessageContent"] else ""
             value += (message_content)[:300] # 300 chars of message
             if len(message_content) > 300:
+                triple_message = message_content.count("```")
+                single_message = message_content.count("`")
                 value += "..."
+                if triple_message %2 != 0:
+                    value += "```"
+                if single_message %2 != 0:
+                    value += "`"
             AttachmentsJSON = json.dumps(message["AttachmentsJSON"])
             EmbedsJSON = json.dumps(message["EmbedsJSON"])
             attachments = convert_json_to_attachment(AttachmentsJSON)
