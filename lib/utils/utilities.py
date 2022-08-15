@@ -144,6 +144,10 @@ def auto_embed(**kwargs):
                         embed.set_thumbnail((kwargs["thumbnail"]))
                 case "fields":
                     for name,value, inline in kwargs["fields"]:
+                        if name == "":
+                            name = "None"
+                        if value == "":
+                            value = "None"
                         embed.add_field(name=name, value=value, inline=inline)
                 case "author":
                     embed.set_author(
