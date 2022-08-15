@@ -11,6 +11,7 @@ from tanjun.abc import SlashContext
 from humanfriendly import format_timespan
 
 from lib.modules.AutoPurge import CB_AUTOPURGE, COG_LINK, COG_TYPE
+from ..Logging.logging_funcs import CHANGE_ARROW
 from ...utils.utilities import parse_timeframe_from_string, auto_embed
 from ...db import db
 
@@ -210,7 +211,7 @@ async def autopurge_cutoff_command(ctx: SlashContext, cutoff: str, channel: hika
     
     CB_AUTOPURGE.load_autopurge_instances()
     
-    description = f"AutoPurge updated in <#{channel.id}>\n\n**Old Cutoff** `{format_timespan(old_cutoff)}` ({old_cutoff}s)\n\n**New Cutoff**: `{format_timespan(cutoff_seconds)}` ({cutoff_seconds}s)"
+    description = f"AutoPurge updated in <#{channel.id}>\n\n**Cutoff** `{format_timespan(old_cutoff)}` ({old_cutoff}s) {CHANGE_ARROW} `{format_timespan(cutoff_seconds)}` ({cutoff_seconds}s)"
     embed = auto_embed(
         type="info",
         author=COG_TYPE,
