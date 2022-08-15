@@ -1284,6 +1284,7 @@ async def message_delete(bot: hikari.GatewayBot,event: hikari.GuildMessageDelete
         old_attachments = list(old_message.attachments) if old_message.attachments else []
         old_embeds = list(old_message.embeds) if old_message.embeds else []
     
+    channel_url = f"https://discord.com/channels/{guild_id}/{channel_id}"
     title = f"Message deleted in {channel.name}"
     fields = []
     
@@ -1316,6 +1317,7 @@ async def message_delete(bot: hikari.GatewayBot,event: hikari.GuildMessageDelete
         author=COG_TYPE,
         author_url = COG_LINK,
         title = title,
+        url = channel_url,
         fields = fields,
         thumbnail=(member.avatar_url or member.default_avatar_url) if member else None,
         footer = f"ID: {message_id}",
