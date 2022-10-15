@@ -6,11 +6,11 @@ Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#Type
 """
 
 import tanjun, hikari
-from lib.core.bot import Bot
-from lib.core.client import Client
 from tanjun.abc import Context as Context
 from tanjun.abc import SlashContext as SlashContext
 
+from lib.core.client import Client
+from lib.utils.command_utils import log_command
 
 type_component = tanjun.Component()
 
@@ -31,8 +31,6 @@ async def type_command(ctx: SlashContext, message: str, private: bool, channel: 
         )
         permissions = (str(perms).split("|"))
         
-        if str(channel.type) != "GUILD_TEXT": # Channels can be voice, category or text
-            raise ValueError("You can only select a text channel to send a message in.")
         if "SEND_MESSAGES" not in permissions: # If a user can't send a message in a channel, then the bot shouldn't on their behalf
             raise PermissionError("You do not have permissions to send messages in this channel")
         
@@ -54,7 +52,8 @@ async def type_command(ctx: SlashContext, message: str, private: bool, channel: 
         else:
             # Normal slash command reply with text
             await ctx.respond(message,role_mentions=True,user_mentions=True)
-    Bot.log_command(ctx,"type",str(message),str(private))
+    log_command(ctx,"type",str(message),str(private))
+
 @tanjun.as_loader
 def load_components(client: Client):
     client.add_component(type_component.copy())
