@@ -7,11 +7,12 @@ Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#UrbanDefine
 
 import tanjun, json, re
 from hikari.messages import ButtonStyle
-from lib.core.bot import Bot
-from lib.core.client import Client
 from tanjun.abc import Context as Context
 from urllib.request import urlopen
 from urllib.parse import quote as urlquote
+
+from lib.core.client import Client
+from lib.utils.command_utils import auto_embed, log_command
 from . import COG_TYPE, COG_LINK
 
 UD_DEFINE_URL = 'https://api.urbandictionary.com/v0/define?term='
@@ -70,7 +71,7 @@ define_component = tanjun.Component()
 @tanjun.as_slash_command("urbandefine","Gets the urban definition of a word")
 async def urbandictionary(ctx: Context,word: str):
     await ctx.respond(
-        embed = Bot.auto_embed(
+        embed = auto_embed(
             type="info",
             author=f"{COG_TYPE}",
             author_url = COG_LINK,
@@ -92,7 +93,7 @@ async def urbandictionary(ctx: Context,word: str):
                 fields.append((f"Definition {i+1} " + up_and_down_votes,field_value,False))
         linkword = word.replace(" ","%20")
         link = f"https://www.urbandictionary.com/define.php?term={linkword}"
-        embed = Bot.auto_embed(
+        embed = auto_embed(
             type="info",
             author=f"{COG_TYPE}",
             author_url = COG_LINK, 
@@ -109,20 +110,18 @@ async def urbandictionary(ctx: Context,word: str):
         )
         components = [button]
     else:
-        embed = Bot.auto_embed(
+        embed = auto_embed(
             type="error",
             author=f"{COG_TYPE}",
             author_url = COG_LINK,
             title="**Word not found**",
-            description=f"Couldn't find `{word}`.\nIt may not exist in urbandictionary or it may be spelt wrong",
+            description=f"Couldn't find `{word}`.\nIt may not exist in UrbanDictionary or it may be spelt wrong",
             ctx=ctx
         )
         components = []
 
     await ctx.edit_initial_response(embed=embed,components = components)
-    Bot.log_command(ctx,"urbandefine",word)
-
-
+    log_command(ctx,"urbandefine",word)
 
 @tanjun.as_loader
 def load_components(client: Client):
