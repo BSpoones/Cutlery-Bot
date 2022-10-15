@@ -8,12 +8,14 @@ import hikari, tanjun
 from lib.core.bot import Bot
 from lib.core.client import Client
 from tanjun.abc import Context as Context
+
+from lib.utils.command_utils import auto_embed, log_command
 from . import COG_TYPE, COG_LINK
 
 userinfo_create_component = tanjun.Component()
 
 @userinfo_create_component.add_slash_command
-@tanjun.with_member_slash_option("target", "Choose a member", default=False)
+@tanjun.with_member_slash_option("target", "Choose a user", default=False)
 @tanjun.as_slash_command("userinfo","Shows the information on a selected user")
 async def user_info_command(ctx: Context, target: hikari.Member):
     target = target or ctx.member
@@ -71,7 +73,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
             ("Boosted", f"{'Yes' if bool(target.premium_since) else 'No'}", True)
             ]
 
-    embed = Bot.auto_embed(
+    embed = auto_embed(
         type="userinfo",
         author=f"{COG_TYPE}",
         author_url = COG_LINK,
@@ -82,7 +84,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
         ctx=ctx
     )
     await ctx.respond(embed=embed)
-    Bot.log_command(ctx,"userinfo")
+    log_command(ctx,"userinfo")
 
 
 
