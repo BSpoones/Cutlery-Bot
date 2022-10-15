@@ -76,7 +76,9 @@ async def server_info_command(ctx: Context):
         ("Statuses", f"`🟢 {statuses_dict['online']} 🟠 {statuses_dict['idle']} 🔴 {statuses_dict['dnd']} ⚪ {statuses_dict['offline']}`", False)
     ]
 
-    embed = Bot.auto_embed(
+    total_command_count = db.count("SELECT COUNT(command_log_id) FROM command_logs")
+    guild_command_count = db.count("SELECT COUNT(command_log_id) FROM command_logs WHERE guild_id = ?",str(ctx.guild_id))
+    description = f"`{guild_command_count:,}` commands have been sent in this server\nThat's `{((guild_command_count/total_command_count)*100):.2f}%` of my total commands."
         type="info",
         author=f"{COG_TYPE}",
         author_url = COG_LINK,
