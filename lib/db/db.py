@@ -1,11 +1,8 @@
-from tracemalloc import start
 from mysql.connector import connect
 from os.path import isfile
 import json, logging, datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from mysql.connector.errors import OperationalError
-import mysql, timeit, time
 from mysql.connector.cursor import CursorBase
 from mysql.connector import MySQLConnection
 from data.bot.data import EVENT_TYPES
@@ -252,15 +249,23 @@ def scriptexec(path):
 		script_list = script.read().split(";")
 		for script in script_list:
 			cur.execute(script)
-build()
 
 def insert_hikari_events():
-	possible_events = EVENT_TYPES
-	LogActions = column("SELECT ActionName FROM LogAction")
-	if sorted(LogActions) != sorted(possible_events): # Oh no- they're not the same!?! big sad
-		logging.info("Adding new log actions to database")
-		for event in possible_events:
-			if event not in LogActions:
-				execute("INSERT INTO LogAction(ActionName) VALUES (?)",event)
-				logging.info(f"{event} added.")
-		commit()
+    possible_events = EVENT_TYPES
+    LogActions = column("SELECT action_name FROM log_action")
+    if sorted(LogActions) != sorted(possible_events): # Oh no- they're not the same!?! big sad
+        logging.info("Adding new log actions to database")
+        for event in possible_events:
+            if event not in LogActions:
+                execute("INSERT INTO log_action(action_name) VALUES (?)",event)
+                logging.info(f"{event} added.")
+    commit()
+
+def is_in_db(value,col,table):
+    """
+    Checks if an item in in the database
+    Returns None if not, row if is
+    """
+    return record(f"SELECT * FROM {table} WHERE {col} = ?",value)
+
+build()
