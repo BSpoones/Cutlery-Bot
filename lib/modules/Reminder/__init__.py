@@ -1,11 +1,12 @@
 """
 Reminder module
-Developed by Bspoones - Dec 2021 - Jan 2022
-Solely for use in the Cutlery Bot discord bot
+Developed by Bspoones - Dec 2021 - Jan 2022 (1.0); Sep - Oct 2022 (2.0)
+For use in Cutlery Bot and TheKBot2
+
 Documentation: https://www.bspoones.com/Cutlery-Bot/Reminder
 """
 
-__version__ = "1.0"
+__version__ = "2.0"
 
 COG_TYPE = "Reminder"
 COG_LINK = "http://www.bspoones.com/Cutlery-Bot/Reminder"
