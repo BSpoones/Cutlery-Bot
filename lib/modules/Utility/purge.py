@@ -33,6 +33,7 @@ async def purge_command(ctx: Context, limit: int):
     else:
         await ctx.respond(f"You tried to purge `{limit:,}` messages, which is more than the maximum ({MAX_PURGE:,}).")
 
+    log_command(ctx,"purge",limit)
 
 @tanjun.as_loader
 def load_components(client: Client):
