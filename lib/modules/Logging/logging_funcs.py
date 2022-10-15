@@ -12,7 +12,6 @@ TODO:
  - Show new role info if role isn't "New Role"
  - Message edit table and log message changes
  - Add role info for guild member (Member Table)
- - Add joined and other info to Member table on guild join
  - Add reaction info to message db row
 """
 
@@ -20,34 +19,43 @@ import requests, logging, tanjun, hikari, json, datetime
 from humanfriendly import format_timespan
 from tanjun import Client
 
+from lib.utils.utils import convert_message_to_dict
+from lib.utils.command_utils import auto_embed
 from lib.modules.Logging import COG_LINK, COG_TYPE
-from ...utils.utilities import auto_embed
-from ...db import db
+from lib.db import db
+from data.bot.data import DARK_GREEN, DARK_RED, GREEN, RED, AMBER
 
 CHANGE_ARROW = ">>" # From previous - new comparasons
-RED = 0xFF0000
-GREEN = 0x00FF00
-AMBER = 0xFFBF00
-DARK_RED = 0x8B0000 
-DARK_GREEN = 0x013220
 
-
-async def is_log_needed(event: str, guild_id: str) -> list[str] | str | None:
+async def is_log_needed(event: str, guild_id: str, channel_id: str = None) -> list[str] | str | None:
     """
     Checks an event name against a guild ID
     Returns a list of channel IDs to send an output to
     """
-    logging_instances = db.records("SELECT * FROM LogChannel WHERE GuildID = ?",str(guild_id))
+    logging_instances = db.records("SELECT * FROM log_channel WHERE guild_id = ?",str(guild_id))
     channel_ids = []
+    
     for instance in logging_instances:
-        LogChannelID = instance[0]
-        ChannelLogAction = db.record("SELECT * FROM ChannelLogAction WHERE LogChannelID = ? AND ActionID = (SELECT ActionID from LogAction WHERE ActionName = ?)", LogChannelID,event)
-        if ChannelLogAction:
-            channel_ids.append(instance[2])
+        log_channel_id = instance[0]
+        channel_log_action = db.record("SELECT * FROM channel_log_action WHERE log_channel_id = ? AND action_id = (SELECT action_id from log_action WHERE action_name = ?)", log_channel_id,event)
+        if channel_log_action:
+            if channel_id is not None:
+                # Checks if channel is ignored or a log channel
+                if not is_channel_ignored(log_channel_id,channel_id) and not db.is_in_db(channel_id,"channel_id","log_channel"):
+                    channel_ids.append(instance[2])
+            else:
+                channel_ids.append(instance[2])
     if channel_ids == []:
         return None
     else:
         return channel_ids           
+
+def is_channel_ignored(log_channel_id,channel_id):
+    channel_ignore = db.record("SELECT * FROM log_channel_ignore WHERE log_channel_id = ? AND channel_id = ?", log_channel_id, channel_id)
+    if channel_ignore is not None:
+        return True
+    else:
+        return False
 
 def format_embed_to_field_value(embed: hikari.Embed) -> str:
     """
@@ -57,23 +65,40 @@ def format_embed_to_field_value(embed: hikari.Embed) -> str:
     `NOTE:` Any icons will be ignored.
     """
     value = ""
+    chars_left = 1024
     # Author info
     if embed.author and embed.author.name:
         if embed.author.url: # Sets a hyperlink
-            value += f"**Author: **[{embed.author.name}]({embed.author.url})\n"
+            addition = f"**Author: **[{embed.author.name}]({embed.author.url})\n"
+            value += addition
+            chars_left -= len(addition) 
         else:
-            value += f"**Author:** {embed.author.name}\n"
+            addition = f"**Author:** {embed.author.name}\n"
+            value += addition
+            chars_left -= len(addition)
     if embed.title:
         if embed.url: # Sets a hyperlink
-            value += f"**Title:** [{embed.title}]({embed.url})\n"
+            addition = f"**Title:** [{embed.title}]({embed.url})\n"
+            value += addition
+            chars_left -= len(addition)
         else:
-            value += f"**Title:** {embed.title}\n"
+            addition = f"**Title:** {embed.title}\n"
+            value += addition
+            chars_left -= len(addition)
     
-    value += f"**Description:** {embed.description}\n" if embed.description else ""
+    # Reserve 25 chars for field count
+    # Reserve 100 chars for footer
+    # Reserve 50 chars for titles and newlines
+    chars_left -= 250
+    if embed.description:
+        if len(embed.description) > chars_left:
+            value += f"**Description:** {embed.description[:chars_left]}...\n"
+        else:
+            value += f"**Description:** {embed.description}...\n"
+
     value += f"**Footer:** {embed.footer.text}\n" if embed.footer and embed.footer.text else ""
     fields_length = len(embed.fields)
     value += f"**Field count:** `{fields_length}`\n" if fields_length > 0 else ""
-
     return value
     
 def convert_json_to_attachment(json_data: str) -> list[hikari.Attachment] or list:
@@ -84,13 +109,12 @@ def convert_json_to_attachment(json_data: str) -> list[hikari.Attachment] or lis
     
     `DO NOT USE IN DIRECT __eq__ COMPARASON`
     """
-    
-    json_data = json_data.replace("'",'"') # json.loads() requires "
+    json_data = json_data.replace('"','\"')
+    json_data = json_data.replace("'",'\"') # json.loads() requires "
     attachment_json = json.loads(json_data)
     try:
         attachments = attachment_json["Attachments"]
     except:
-        print(attachment_json)
         return []
     attachments_output = []
     for attachment in attachments:
@@ -116,12 +140,12 @@ def convert_json_to_embeds(json_data: str) -> list[hikari.Embed]:
     Uses `auto_embed` just like any other bot command, and therefore can work with an
     __eq__ comparason
     """
+    json_data = json_data.replace('"','\"')
     json_data = json_data.replace("'",'"') # json.loads() requires "
     embed_json = json.loads(json_data)
     try:
         embeds = embed_json["Embeds"]
     except:
-        print(embed_json)
         return []
     embeds_output = []
     for embed in embeds:
@@ -304,7 +328,6 @@ async def guild_channel_create(bot: hikari.GatewayBot, event: hikari.GuildChanne
         thumbnail=guild.icon_url,
         colour = hikari.Colour(GREEN)
         )
-
     channels = await is_log_needed(event.__class__.__name__,event.guild_id)
     if channels != None:
         for channel in channels:
@@ -350,7 +373,7 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
     # Name change
     if old_channel.name != new_channel.name:
         name = "Name change"
-        value = f"`{old_channel.name}` {CHANGE_ARROW} <#{new_channel.id}> ({new_channel.name})"
+        value = f"`{old_channel.name}` {CHANGE_ARROW} `{new_channel.name}`"
         fields.append((name,value,False))
     
     # Permission change
@@ -359,7 +382,6 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
         new_perms = new_channel.permission_overwrites
         guild_roles = await bot.rest.fetch_roles(event.guild_id)
         guild_role_ids = [role.id for role in guild_roles]
-        
         if len(old_perms) > len(new_perms):
             # Role or user removed
             removed_permission_id = (list(set(old_perms.keys())-set(new_perms.keys())))[0]
@@ -438,7 +460,7 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
             if removed_allow != []:
                 value += f"\n`{len(removed_allow)}` permissions removed: `{'|'.join(removed_allow)}`"
             if added_allow == [] and removed_allow == []:
-                value += "No changes."
+                value += "No changes"
             fields.append((name,value,False))
             # Formatting deny
             
@@ -449,7 +471,7 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
             if removed_deny != []:
                 value += f"\n`{len(removed_deny)}` permissions removed: `{'|'.join(removed_deny)}`"
             if added_deny == [] and removed_deny == []:
-                value += "No changes."
+                value += "No changes"
             fields.append((name,value,False))
     
     # TODO: Position change
@@ -531,8 +553,7 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
         footer = f"ID: {new_channel.id}",
         colour = hikari.Colour(AMBER)
         )
-    
-    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id, str(event.channel_id))
     if channels != None:
         for channel in channels:
             await bot.rest.create_message(channel,embed=embed)
@@ -544,11 +565,13 @@ async def guild_channel_delete(bot: hikari.GatewayBot, event: hikari.GuildChanne
     """
     channel = event.channel
     guild = await channel.fetch_guild()
-    if channel.parent_id is not None:
-        category = (await bot.rest.fetch_channel(channel.parent_id)).name
-    else:
+    try:
+        if channel.parent_id is not None:
+            category = (await bot.rest.fetch_channel(channel.parent_id)).name
+        else:
+            category = None
+    except:
         category = None
-        
     channel_type = channel.type.name
     match channel_type:
         case "GUILD_TEXT":
@@ -576,8 +599,8 @@ async def guild_channel_delete(bot: hikari.GatewayBot, event: hikari.GuildChanne
         footer = f"ID: {channel.id}",
         colour = hikari.Colour(RED)
         )
-    
-    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id, str(event.channel_id))
     if channels != None:
         for channel in channels:
             await bot.rest.create_message(channel,embed=embed)
@@ -618,7 +641,7 @@ async def on_invite_create(bot: hikari.GatewayBot, event: hikari.InviteCreateEve
             colour = hikari.Colour(GREEN)
             )
     
-    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id, str(event.channel_id))
     if channels != None:
         for channel in channels:
             await bot.rest.create_message(channel,embed=embed)
@@ -654,7 +677,7 @@ async def on_invite_delete(bot: hikari.GatewayBot, event: hikari.InviteDeleteEve
             colour = hikari.Colour(RED)
             )
     
-    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id, str(event.channel_id))
     if channels != None:
         for channel in channels:
             await bot.rest.create_message(channel,embed=embed)
@@ -684,9 +707,7 @@ async def guild_reaction_add(bot: hikari.GatewayBot, event: hikari.GuildReaction
         it isn't animated
         """
         emoji = hikari.CustomEmoji.parse(f"<a:{emoji_name}:{emoji_id}>")
-        print("requests module is being used")
         status_code = requests.get(emoji.url).status_code
-        print("requests module worked")
         if status_code == 415:
             # Means emoji is not animated
             emoji = hikari.CustomEmoji.parse(f"<:{emoji_name}:{emoji_id}>")
@@ -716,7 +737,7 @@ async def guild_reaction_add(bot: hikari.GatewayBot, event: hikari.GuildReaction
         colour = hikari.Colour(GREEN)
         )
    
-    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id, str(event.channel_id))
     if channels != None:
         for channel in channels:
              await bot.rest.create_message(channel,embed=embed)
@@ -739,9 +760,7 @@ async def guild_reaction_remove(bot: hikari.GatewayBot,event:hikari.GuildReactio
         emoji_name = event.emoji_name
         emoji_id = event.emoji_id
         emoji = hikari.CustomEmoji.parse(f"<a:{emoji_name}:{emoji_id}>")
-        print("request")
         status_code = requests.get(emoji.url).status_code
-        print("request works")
         if status_code == 415:
             # Means emoji is not animated
             emoji = hikari.CustomEmoji.parse(f"<:{emoji_name}:{emoji_id}>")
@@ -770,7 +789,7 @@ async def guild_reaction_remove(bot: hikari.GatewayBot,event:hikari.GuildReactio
         colour = hikari.Colour(RED)
         )
     
-    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id, str(event.channel_id))
     if channels != None:
         for channel in channels:
              await bot.rest.create_message(channel,embed=embed)
@@ -795,7 +814,7 @@ async def guild_reaction_delete_all(bot: hikari.GatewayBot, event: hikari.GuildR
         colour = hikari.Colour(DARK_RED)
         )
     
-    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id, str(event.channel_id))
     if channels != None:
         for channel in channels:
              await bot.rest.create_message(channel,embed=embed)
@@ -820,7 +839,6 @@ async def role_create(bot: hikari.GatewayBot, event: hikari.RoleCreateEvent):
         footer = f"Role ID: {event.role_id}",
         colour = hikari.Colour(RED)
         )
-
     channels = await is_log_needed(event.__class__.__name__,event.guild_id)
     if channels != None:
         for channel in channels:
@@ -934,7 +952,7 @@ async def role_delete(bot: hikari.GatewayBot, event: hikari.RoleDeleteEvent):
         footer = f"ID: {role_id}",
         colour = hikari.Colour(RED)
         )
-    
+
     channels = await is_log_needed(event.__class__.__name__,event.guild_id)
     if channels != None:
         for channel in channels:
@@ -944,7 +962,7 @@ async def role_delete(bot: hikari.GatewayBot, event: hikari.RoleDeleteEvent):
 
 async def message_create(bot: hikari.GatewayBot, event: hikari.MessageCreateEvent):
     """
-    Logs all messages into the MessageLogs db table
+    Logs all messages into the message_logs db table
     """
     # Only Guilds that want to log messages will have them stored
     channels = await is_log_needed(event.__class__.__name__,event.message.guild_id)
@@ -953,26 +971,26 @@ async def message_create(bot: hikari.GatewayBot, event: hikari.MessageCreateEven
       
     message = event.message
     output = convert_message_to_dict(message)
-    GuildID = output["GuildID"]
-    ChannelID = output["ChannelID"]
-    MessageID = output["MessageID"]
-    AuthorID = output["AuthorID"]
-    MessageContent = output["MessageContent"]
-    MessageReference = output["MessageReference"]
-    Pinned = output["Pinned"]
-    TTS = output["TTS"]
-    AttachmentsJSON = output["AttachmentsJSON"]
-    EmbedsJSON = output["EmbedsJSON"]
-    ReactionsJSON = output["ReactionsJSON"]
-    CreatedAt = output["CreatedAt"]
+    guild_id = output["guild_id"]
+    channel_id = output["channel_id"]
+    message_id = output["message_id"]
+    user_id = output["user_id"]
+    message_content = output["message_content"]
+    message_reference = output["message_reference"]
+    pinned = output["pinned"]
+    tts = output["tts"]
+    attachments_json = output["attachments_json"]
+    embeds_json = output["embeds_json"]
+    reactions_json = output["reactions_json"]
+    created_at = output["created_at"]
     
-    AttachmentsJSON = json.dumps(AttachmentsJSON)
-    EmbedsJSON = json.dumps(EmbedsJSON)
-    ReactionsJSON = json.dumps(ReactionsJSON)
+    attachments_json = json.dumps(attachments_json)
+    embeds_json = json.dumps(embeds_json)
+    reactions_json = json.dumps(reactions_json)
     
     db.execute(
-        "INSERT INTO MessageLogs(GuildID,ChannelID,MessageID,AuthorID,MessageContent,MessageReferenceID,Pinned,TTS,AttachmentsJSON,EmbedsJSON,ReactionsJSON,CreatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-        GuildID,ChannelID,MessageID,AuthorID,MessageContent,MessageReference,Pinned,TTS,AttachmentsJSON,EmbedsJSON,ReactionsJSON,CreatedAt
+        "INSERT INTO message_logs(guild_id,channel_id,message_id,user_id,message_content,message_reference,pinned,tts,attachments_json,embeds_json,reactions_json,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        guild_id,channel_id,message_id,user_id,message_content,message_reference,pinned,tts,attachments_json,embeds_json,reactions_json,created_at
         )
     db.commit()
 
@@ -981,7 +999,15 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
     Formats log message when a guild message is edited
     Will log content, embeds, and attachments
     """
-    guild_id = event.guild_id
+    try:
+        guild_id = event.guild_id
+    except:
+        """
+        Messages changed through the rest API don't give any info.
+        Meaning not even a message id is given, meaning it is
+        impossible to find let alone log the message change
+        """
+        return
     channel_id = event.channel_id
     message_id = event.message_id
     
@@ -998,7 +1024,7 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
     
     # Retrieving message from cache or db
     if old_message is None:
-        old_message = db.record("SELECT * FROM MessageLogs WHERE MessageID = ?",str(event.message_id))
+        old_message = db.record("SELECT * FROM message_logs WHERE message_id = ?",str(event.message_id))
         if old_message is None:
             # There is no message in either the cache or the db
             return
@@ -1017,12 +1043,12 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
         old_pinned = old_message.is_pinned
     
     message_link = f"https://discord.com/channels/{guild_id}/{channel_id}/{message_id}"
-    title = f"Message edited in {channel.name}"
+    title = f"Message edited in #{channel.name}"
     fields = []
     
     # Pin change
     if old_pinned != new_message.is_pinned:
-        # Pinned
+        # pinned
         make_embed = True
         if new_message.content is None:
             message_type = "Embed"
@@ -1055,7 +1081,7 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
             if channels != None:
                 for channel in channels:
                     await bot.rest.create_message(channel,embed=embed)
-            db.execute("UPDATE MessageLogs SET Pinned = ? WHERE MessageID = ?",
+            db.execute("UPDATE message_logs SET pinned = ? WHERE message_id = ?",
                int(bool(new_message.is_pinned)),
                new_message.id
                )
@@ -1066,7 +1092,10 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
     # Content change
     if old_content != new_content:
         # Difference of 2 strings to be put here later
+        
         name = f"Content change"
+        if new_content == "" and old_content != "":
+            return # This occurs when a link is turned into an embed
         if old_content == "None":
             old_content = ""
         if old_content.startswith("https://tenor.com/"):
@@ -1131,16 +1160,19 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
             changed_embeds = [(old,new) for old,new in zip(old_embeds,new_embeds) if old != new ]
             name = f"{len(old_embeds) if len(old_embeds) > 1 else ''}Embed{'s' if len(old_embeds) > 1 else ''} edited"
             value = ""
-            for embeds in changed_embeds:
+            for i,embeds in enumerate(changed_embeds,start=1):
                 old = embeds[0]
                 new = embeds[1]
                 old_value = format_embed_to_field_value(old)
                 new_value = format_embed_to_field_value(new)
-                if old_value != new_value:
-                    value += f"__**Old**__\n{old_value}\n__**New**__\n{new_value}\n"
-            if value != "":
-                fields.append((name,value,False))
-                
+                if old_value != new_value: # Fixes issue where thumbnail allocation caused a message edit log
+                    name = f"Old embed {i if i != 1 else ''}"
+                    value = old_value
+                    fields.append((name,value,False))
+                    
+                    name = f"New embed {i if i != 1 else ''}"
+                    value = new_value
+                    fields.append((name,value,False))
     if fields == []:
         # Component and embed change
         return
@@ -1156,22 +1188,22 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
         colour = hikari.Colour(AMBER)
         )
     
-    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id, str(event.channel_id))
     if channels != None:
         for channel in channels:
              await bot.rest.create_message(channel,embed=embed)
 
     # TODO: Also add row in MessageEdits table with old message
     output = convert_message_to_dict(new_message)
-    content = output["MessageContent"]
-    pinned = output["Pinned"]
-    AttachmentsJSON = output["AttachmentsJSON"]
-    EmbedsJSON = output["EmbedsJSON"]
-    db.execute("UPDATE MessageLogs SET MessageContent = ?, Pinned = ?, AttachmentsJSON = ?, EmbedsJSON = ? WHERE MessageID = ?",
+    content = output["message_content"]
+    pinned = output["pinned"]
+    attachments_json = output["attachments_json"]
+    embeds_json = output["embeds_json"]
+    db.execute("UPDATE message_logs SET message_content = ?, pinned = ?, attachments_json = ?, embeds_json = ? WHERE message_id = ?",
                content,
                pinned,
-               AttachmentsJSON,
-               EmbedsJSON,
+               attachments_json,
+               embeds_json,
                new_message.id
                )
     db.commit()
@@ -1189,12 +1221,16 @@ async def message_delete(bot: hikari.GatewayBot,event: hikari.GuildMessageDelete
     old_message = event.old_message
     
     try:
-        member = await bot.rest.fetch_member(guild_id,old_message.author.id)
-    except:
+        if old_message:
+            author_id = old_message.author.id
+            member = await bot.rest.fetch_member(guild_id,author_id)
+        else:
+            member = None
+    except hikari.NotFoundError:
         member = None
     
     if old_message is None:
-        old_message = db.record("SELECT * FROM MessageLogs WHERE MessageID = ?",str(event.message_id))
+        old_message = db.record("SELECT * FROM message_logs WHERE message_id = ?",str(event.message_id))
         if old_message is None:
             # There is no message in either the cache or the db
             return
@@ -1211,7 +1247,7 @@ async def message_delete(bot: hikari.GatewayBot,event: hikari.GuildMessageDelete
         old_embeds = list(old_message.embeds) if old_message.embeds else []
     
     channel_url = f"https://discord.com/channels/{guild_id}/{channel_id}"
-    title = f"Message deleted in {channel.name}"
+    title = f"Message deleted in #{channel.name}"
     fields = []
     
     if old_content:
@@ -1250,14 +1286,14 @@ async def message_delete(bot: hikari.GatewayBot,event: hikari.GuildMessageDelete
         colour = hikari.Colour(RED)
         )
     
-    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id, str(event.channel_id))
     if channels != None:
         for channel in channels:
             if channel != str(channel_id):
                 # Ensures that a log deletion isn't recorded constantly
                 await bot.rest.create_message(channel,embed=embed)
     
-    db.execute("UPDATE MessageLogs SET DeletedAt = ? WHERE MessageID = ?",
+    db.execute("UPDATE message_logs SET deleted_at = ? WHERE message_id = ?",
                datetime.datetime.today(),
                message_id
                )
@@ -1277,26 +1313,26 @@ async def bulk_message_delete(bot: hikari.GatewayBot, event: hikari.GuildBulkMes
             message = convert_message_to_dict(old_messages[message_id])
             actual_messages.append(message)
         else:
-            old_message = db.record("SELECT * FROM MessageLogs WHERE MessageID = ?",str(message_id))
+            old_message = db.record("SELECT * FROM message_logs WHERE message_id = ?",str(message_id))
             if old_message is not None:            
                 output = {}
-                output["GuildID"] = old_message[0]
-                output["ChannelID"] = old_message[1]
-                output["MessageID"] = old_message[2]
-                output["AuthorID"] = old_message[3]
-                output["MessageContent"] = old_message[4]
-                output["MessageReference"] = old_message[5]
-                output["Pinned"] = int(old_message[6])
-                output["TTS"] = int(old_message[7])
-                output["EmbedsJSON"] = old_message[8]
-                output["AttachmentsJSON"] = old_message[9]
-                output["ReactionsJSON"] = old_message[10]
-                output["CreatedAt"] = old_message[11]
+                output["guild_id"] = old_message[0]
+                output["channel_id"] = old_message[1]
+                output["message_id"] = old_message[2]
+                output["user_id"] = old_message[3]
+                output["message_content"] = old_message[4]
+                output["message_reference"] = old_message[5]
+                output["pinned"] = int(old_message[6])
+                output["tts"] = int(old_message[7])
+                output["attachments_json"] = old_message[8]
+                output["embeds_json"] = old_message[9]
+                output["reactions_json"] = old_message[10]
+                output["created_at"] = old_message[11]
                 actual_messages.append(output)
                 db_messages.append(str(message_id))
     
     # Displaying deleted messages with oldest on top
-    actual_messages = sorted(actual_messages, key= lambda x: x["CreatedAt"], reverse=True)
+    actual_messages = sorted(actual_messages, key= lambda x: x["created_at"], reverse=False)
     
     # Dividing messages into chunks of 10
     DIVISION_AMOUNT = 10
@@ -1312,14 +1348,16 @@ async def bulk_message_delete(bot: hikari.GatewayBot, event: hikari.GuildBulkMes
             description = None
         fields = []
         for message in messages:
-            user = bot.cache.get_member(event.guild_id,message['AuthorID'])
-            if user is None:
-                user = await bot.rest.fetch_member(event.guild_id,message['AuthorID'])
-                
-            name = f"{user.username} ({message['AuthorID']})"
+            try:
+                user = bot.cache.get_member(event.guild_id,message['user_id'])
+                if user is None:
+                    user = await bot.rest.fetch_member(event.guild_id,message['user_id'])
+            except hikari.NotFoundError:
+                user = None
+            name = f"{user.username if user else 'Unknown (Left server)'} ({message['user_id']})"
             value = ""
             # Showing content, embed & attachments
-            message_content = message["MessageContent"] if message["MessageContent"] else ""
+            message_content = message["message_content"] if message["message_content"] else ""
             value += (message_content)[:300] # 300 chars of message
             if len(message_content) > 300:
                 triple_message = message_content.count("```")
@@ -1329,16 +1367,16 @@ async def bulk_message_delete(bot: hikari.GatewayBot, event: hikari.GuildBulkMes
                     value += "```"
                 if single_message %2 != 0:
                     value += "`"
-            AttachmentsJSON = json.dumps(message["AttachmentsJSON"])
-            EmbedsJSON = json.dumps(message["EmbedsJSON"])
-            attachments = convert_json_to_attachment(AttachmentsJSON)
+            attachments_json = json.dumps(message["attachments_json"])
+            embeds_json = json.dumps(message["embeds_json"])
+            attachments = convert_json_to_attachment(attachments_json)
             for attachment in attachments:
                 if len(value) < 500:
                     filename: str = attachment.filename
                     url = attachment.url
                     value +=f"\n[{filename[:20]}]({url})"
             
-            embeds = convert_json_to_embeds(EmbedsJSON)
+            embeds = convert_json_to_embeds(embeds_json)
             for embed in embeds:
                 if len(value) <500:
                     value += f"\n__**Embed**__"
@@ -1358,14 +1396,14 @@ async def bulk_message_delete(bot: hikari.GatewayBot, event: hikari.GuildBulkMes
         colour = hikari.Colour(DARK_RED)
         )
     
-        channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+        channels = await is_log_needed(event.__class__.__name__,event.guild_id, str(event.channel_id))
         if channels != None:
             for channel in channels:
                 if channel != str(event.channel_id):
                     # Ensures that a log deletion isn't recorded constantly
                     await bot.rest.create_message(channel,embed=embed)
         
-    db.execute(f"UPDATE MessageLogs SET DeletedAt = ? WHERE MessageID IN {tuple(event.message_ids)}",
+    db.execute(f"UPDATE message_logs SET deleted_at = ? WHERE message_id IN {tuple(event.message_ids)}",
                datetime.datetime.today(),
                )
     db.commit()
@@ -1496,12 +1534,16 @@ async def on_member_delete(bot: hikari.GatewayBot, event: hikari.MemberDeleteEve
         bot.client.metadata.pop(f"{event.guild_id}{event.user_id}")
     target = event.old_member if event.old_member else event.user
     
-    # TODO: Role info will be added when the database for it is setup
     created_at = int(target.created_at.timestamp())
-    # TODO: Joined at info will also be added when database for it is setup
 
-    description = f"**Username:** {target.mention} ({str(target)})\n**Type:** `{'Bot' if target.is_bot else 'Human'}`\n**ID:** `{target.id}`\n**Created on:** <t:{created_at}:d> :clock1: <t:{created_at}:R>"
-
+    db_guild_member = db.record("SELECT * FROM guild_members WHERE guild_id = ? AND user_id = ?",str(event.guild_id),str(event.user.id))
+    
+    joined_on: datetime.datetime = (db_guild_member[2]) if db_guild_member else None
+    if joined_on:
+        joined_on = int(joined_on.timestamp())
+        description = f"**Username:** {target.mention} ({str(target)})\n**Type:** `{'Bot' if target.is_bot else 'Human'}`\n**ID:** `{target.id}`\n**Created on:** <t:{created_at}:d> :clock1: <t:{created_at}:R>\n**Joined on** <t:{joined_on}:d> :clock1: <t:{joined_on}:R>"
+    else:
+        description = f"**Username:** {target.mention} ({str(target)})\n**Type:** `{'Bot' if target.is_bot else 'Human'}`\n**ID:** `{target.id}`\n**Created on:** <t:{created_at}:d> :clock1: <t:{created_at}:R>"
 
     embed = auto_embed(
         type="logging",
@@ -1692,7 +1734,7 @@ async def on_voice_state_update(bot: hikari.GatewayBot, event: hikari.VoiceState
         colour = hikari.Colour(colour_hex)
         )
     
-    channels = await is_log_needed(event.__class__.__name__,event.guild_id)
+    channels = await is_log_needed(event.__class__.__name__,event.guild_id, str(new_state.channel_id))
     if channels != None:
         for channel in channels:
              await bot.rest.create_message(channel,embed=embed)
