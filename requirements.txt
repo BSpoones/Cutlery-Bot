@@ -8,3 +8,5 @@ humanfriendly
 requests_async
 pillow
 validators
+bs4
+qrcode
