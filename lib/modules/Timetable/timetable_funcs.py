@@ -1,26 +1,25 @@
-"""
-Timetable funcs class
-Developed by Bspoones - Feb 2022
-Solely for use in the Cutlery Bot discord bot
-Documentation: https://www.bspoones.com/Cutlery-Bot/Timetable
-"""
-import asyncio, random, re, hikari, tanjun, datetime, validators
+
+import asyncio, random, re, hikari, tanjun, datetime, validators, csv
+import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
+from lib.core.error_handling import CustomError
+from apscheduler.triggers.date import DateTrigger
+from hikari.messages import ButtonStyle
 from PIL import Image
 from humanfriendly import format_timespan
 from tanjun import Client
 from data.bot.data import OWNER_IDS
 from lib.core.bot import bot, Bot
-from lib.utils import utilities as BotUtils
+from lib.utils.command_utils import auto_embed
+from lib.utils.utils import next_occourance_of_time
 from . import COG_LINK, COG_TYPE, DAYS_OF_WEEK
-
 from ...db import db
-# All IDs (GroupID, UserID etc) to be standardised in CamelCase
 
-HM_FMT = "%H%M"
-HMS_FMT = "%H%M%S"
-ONLINE_THUMBNAIL = "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Google_Meet_icon_%282020%29.svg/934px-Google_Meet_icon_%282020%29.svg.png"
+
+HHMM_FORMAT = "%H%M"
+DEFAULT_ALERT_TIMES = "20,10,5,0"
+# All IDs and variables are standardised in snake_case
 
 class Timetable():
     def __init__(self):
@@ -44,542 +43,784 @@ class Timetable():
             self.lesson_scheduler = AsyncIOScheduler()
         except:
             self.lesson_scheduler = AsyncIOScheduler()
-        
-        lessons = db.records("SELECT * FROM Lessons ORDER BY LessonID")
+            
+        lessons = db.records("SELECT * FROM lessons")
         for lesson in lessons:
-            GroupID = lesson[1]
-            DayOfWeek = lesson[4]
-            WeekNumber = lesson[5]
-            StartTime = lesson[6]
+            lesson_group_id = lesson[1]
+            day_of_week = lesson[4]
+            week_numbers = lesson[5]
+            start_time = lesson[6]
+            end_time = lesson[7]
             
-            GroupInfo: list[str] = db.record("SELECT * FROM LessonGroups WHERE GroupID = ?",GroupID)
-            WarningTimes = GroupInfo[13].split()
-            IntWarningTimes = list(map(int,WarningTimes))
-            """
-            Below changes the warning times so they only get sent between lessons.
-            E.G If a second lesson comes 15 mins after the first, there's no point
-            giving a 30 min warning for the 2nd lesson as it will be during the first
-            lesson
-            """
-            # The following sets a default date to 1900-01-01 + DayOfWeek + Time. This date will be the same as the required
-            # day of week and is used to calculate overlapping lessons and nothing else, it will IGNORE holidays
-            StartTimeDateTime = datetime.datetime.strptime(StartTime,HM_FMT) + datetime.timedelta(days=DayOfWeek + (7*WeekNumber))
-            # The 7*Weeknumber is used for multi week lessons if i ever do them
+            group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?", lesson_group_id)
+            start_date: datetime.datetime = group_info[10]
+            alert_times: str = group_info[14]
             
-            # Will calculate the next occourance of the lesson in datetime format
-            ActualWarningTimes: list[int] = []
-            for WarningTime in IntWarningTimes:
-                TDelta = datetime.timedelta(minutes=WarningTime)
-                ElementDateTime = StartTimeDateTime -  TDelta
-                if not self.is_datetime_in_lesson(GroupID,ElementDateTime):
-                    ActualWarningTimes.append(WarningTime)
-            if 0 not in ActualWarningTimes:
-                ActualWarningTimes.append(0) # Used for the "Your lesson is now" message
-                
-            # Scheduling the lesson with appropriate warning times
-            for WarningTime in ActualWarningTimes:
-                UpdatedDateTime = StartTimeDateTime - datetime.timedelta(minutes=WarningTime)
-                UpdatedDayOfWeek = UpdatedDateTime.weekday()
-                UpdatedHour = UpdatedDateTime.hour
-                UpdatedMinute = UpdatedDateTime.minute
-                
-                Trigger = CronTrigger(
-                    day_of_week= UpdatedDayOfWeek,
-                    hour= UpdatedHour,
-                    minute = UpdatedMinute,
-                    second = 0
-                )
-                if WarningTime == ActualWarningTimes[0]: # The earliest warning time, when the lesson embed appears
-                    self.lesson_scheduler.add_job(
-                        self.send_lesson_embed,
-                        Trigger,
-                        args = [lesson]
-                    )
-                    self.lesson_scheduler.add_job(
-                        self.send_lesson_countdown,
-                        Trigger,
-                        args = [lesson, WarningTime, ActualWarningTimes]
-                    )
-                else:
-                    self.lesson_scheduler.add_job(
-                        self.send_lesson_countdown,
-                        Trigger,
-                        args = [lesson, WarningTime, ActualWarningTimes]
-                    )
-        self.lesson_scheduler.start()
-    
-    async def send_lesson_embed(self,*args):
-        """
-        Sends lesson information as en embed at the earliest warning time before a
-        lesson is due to start. It calculates lesson duration and other information,
-        as well as checking for any assignments due for the group.
-        
-        It checks for any assignments that have the same group/teacher/subject that are
-        `30 mins before >= lesson >= 30 mins after` (as long as that time isn't during another
-        lesson)
-        """
-        lesson = args[0]
-        GroupID = lesson[1]
-        # Can assume that the current datetime is the time the lesson is sent
-        LessonDatetime = datetime.datetime.today()
-        # Checks if lesson should send
-        if self.is_datetime_in_holiday(GroupID,LessonDatetime):
-            return # No lessons during a holiday so no need to carry on with this function
-        
-        # Assigning variables
-        
-        GroupID = lesson[1]
-        TeacherID = lesson[2]
-        SubjectID = lesson[3]
-        StartTime = lesson[6]
-        EndTime = lesson[7]
-        Room = lesson[8]
-        
-        GroupInfo: list[str] = db.record("SELECT * FROM LessonGroups WHERE GroupID = ?",GroupID)
-        
-        OutPutChannel = int(GroupInfo[9])
-        SchoolName = GroupInfo[2]
-        SchoolIconLink = GroupInfo[12]
-        
-        TeacherInfo: list[str] = db.record("SELECT * FROM Teachers WHERE TeacherID = ?",TeacherID)
-        
-        LessonTeacher = TeacherInfo[2]
-        LessonOnline = TeacherInfo[5]
-        if LessonOnline:
-            LessonLink = TeacherInfo[4]
-        
-        StartDateTime = datetime.datetime.strptime(StartTime,HM_FMT)
-        EndDateTime = datetime.datetime.strptime(EndTime,HM_FMT)
-        LessonDration = format_timespan((EndDateTime-StartDateTime).total_seconds())
-        
-        StartTime = StartDateTime.time()
-        EndTime = EndDateTime.time()
-        
-        LessonDatetime = BotUtils.next_occourance_of_time(StartTime)
-        LessonTimestamp = BotUtils.get_timestamp(LessonDatetime)
-        
-        if SubjectID is not None:
-            SubjectInfo: list[str] = db.record("SELECT * FROM Subjects WHERE SubjectID = ?", SubjectID)
-            LessonSubject = SubjectInfo[2]
-            title = f"{LessonSubject} with {LessonTeacher}"
-        else:
-            title = f"Lesson with {LessonTeacher}"
+            lesson_alert_times = [int(x) for x in alert_times.split(",")]
             
+            # All lessons will be in the x-y format for week numbers.
+            # Weekly lessons will just have week 1-51 on them
+            week_start_datetimes = self.get_week_start_datetimes(week_numbers, start_date)
+            for start_datetime in week_start_datetimes:
+                # All of these are week based (e.g weeks 1-6,8,10-15)
+                # Weekly lessons (old method) will be week 1-51 unless specified otherwise
+                # No lesson will be an exception, even singular lessons will have a week date                
+                if isinstance(start_datetime, list):
+                    # Create trigger
+                    start_week = start_datetime[0]
+                    end_week = start_datetime[1]
+                    
+                    for alert_time in lesson_alert_times:
+                        start_date = start_week + datetime.timedelta(days = day_of_week)
+                        start_time_object = (datetime.datetime.strptime(start_time,HHMM_FORMAT)- datetime.timedelta(minutes=alert_time)).time()
+                        start_datetime = datetime.datetime.combine(start_date,start_time_object)
+                        
+                        end_date = end_week + datetime.timedelta(days = day_of_week)
+                        end_time_object = (datetime.datetime.strptime(end_time,HHMM_FORMAT) - datetime.timedelta(minutes=alert_time)).time()
+                        end_datetime = datetime.datetime.combine(end_date,end_time_object)
+                        trigger = IntervalTrigger(
+                            days = 7,
+                            start_date = start_datetime,
+                            end_date = end_datetime,
+                            jitter=1
+                        )
+                        self.lesson_scheduler.add_job(
+                            self.send_lesson_countdown,
+                            trigger,
+                            args = [lesson, alert_time, lesson_alert_times]
+                        )
+                        # All alert time functions will check if it's currently in a lesson
+                        # If they're currently in a lesson, return
+                        # If they're not currently in a lesson, find out if the previous alert time is in a lesson
+                        # If the previous alert time is in a lesson but yours isn't, then you're the first one and should 
+                        # send the lesson embed as well as your own countdown
+                        # If the previous alert time is not in a lesson, assume the embed has already been sent
+                else: # Single week lesson
+                    for alert_time in lesson_alert_times:
+                        lesson_date = start_week + datetime.timedelta(days = day_of_week)
+                        lesson_time = (datetime.datetime.strptime(start_time,HHMM_FORMAT) - datetime.timedelta(minutes=alert_time)).time()
+                        lesson_datetime = datetime.datetime.combine(lesson_date,lesson_time)
+                        
+                        trigger = DateTrigger(
+                            run_date = lesson_datetime,
+                        )
+                        self.lesson_scheduler.add_job(
+                            self.send_lesson_countdown,
+                            trigger,
+                            args = [lesson, alert_time, lesson_alert_times]
+                        )
 
-        description = f"**In {Room}**\n> Start: `{StartTime.strftime('%H:%M')}`\n> End: `{EndTime.strftime('%H:%M')}`\n> Duration: `{LessonDration}`"
-        if LessonOnline:
-            description += "\n**This is an online lesson**"
-        fields = [
-            ("Lesson start",f":clock1: <t:{LessonTimestamp}:R>",False)
-        ]
-        # Assignments to be added here as fields
+        self.lesson_scheduler.start()
+
+    async def send_lesson_embed(self,lesson: tuple) -> hikari.Embed:
+        """
+        Creates and sends an embed displaying information
+        for an upcomming lesson.
+        """
+        # Lesson info
+        lesson_group_id = lesson[1]
+        subject_id = lesson[2]
+        teacher_id = lesson[3]
+        start_time = lesson[6]
+        end_time = lesson[7]
+        room = lesson[8]
+        lesson_type = lesson[9]
         
-        # Creating embed
-        if SubjectID is None:
-            EmbedColourHex = TeacherInfo[3]
+        # Group info
+        group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?",lesson_group_id)
+        channel_id = int(group_info[9])
+        image_link = group_info[13]
+        school: str = group_info[15]
+        
+        # -- Formatting embed info --
+        
+        # Lesson times and duration
+        start_datetime = datetime.datetime.strptime(start_time,HHMM_FORMAT)
+        end_datetime = datetime.datetime.strptime(end_time,HHMM_FORMAT)
+        lesson_duration = format_timespan((end_datetime-start_datetime).total_seconds())
+        lesson_start_timestamp = int(next_occourance_of_time(start_datetime.time()).timestamp())
+        
+        # Room and/or link
+        if school.lower() == "university of lincoln":
+            if room.lower() != "online":
+                room_link = f"https://navigateme.lincoln.ac.uk/?type=s&end=r_{room[:-3]}_{room[-3:]}"
+                room_str = f"In [{room}]({room_link})"
+            else:
+                room_str = "Online"
         else:
-            EmbedColourHex = SubjectInfo[3]
-        EmbedColour = hikari.Colour(int(f"0x{EmbedColourHex}",16))
+            room_str = f"In {room}"
+            
+        # Subject / Teacher info
+        teacher_info = db.record("SELECT * FROM teachers WHERE teacher_id = ?",teacher_id)
+        subject_info = db.record("SELECT * FROM subjects WHERE subject_id = ?",subject_id)
+        lesson_type = lesson_type if lesson_type else "lesson"
+        # Building the embed title based on the information given
+        if all([x is not None for x in [teacher_info,subject_info]]): # Both teacher and subject info
+            teacher_name: str = teacher_info[2]
+            subject_name: str = subject_info[2]
+            lesson_title = f"{subject_name.capitalize()} {lesson_type} with {teacher_name.capitalize()}"
+            # Prioritising subject over teacher if subject is given
+            colour = subject_info[3]
+        elif all([x is None for x in [teacher_info,subject_info]]): # No teacher or subject info
+            lesson_title = f"Lesson"
+            colour = group_info[7]
+        elif subject_info is None: # Only teacher info is given
+            # Only including Subject name + lesson_type
+            teacher_name: str = teacher_info[2]
+            lesson_title = f"{lesson_type} with {teacher_name.capitalize()}"
+            colour = teacher_info[3]
+        elif teacher_info is None: # Only subject info is given
+            subject_name: str = subject_info[2]
+            lesson_title = f"{subject_name.capitalize()} {lesson_type}"
+            colour = subject_info[3]
+            
+        # Formatting colour
+        colour = hikari.Colour(int(f"0x{colour[7]}",16))
         
-        embed = Bot.auto_embed(
-            type="lesson",
-            author=COG_TYPE,
+        description = f"**{room_str}**\n> Start: `{start_datetime.strftime('%H:%M')}`\n> End: `{end_datetime.strftime('%H:%M')}`\n> Duration: `{lesson_duration}`"
+        fields = [
+            ("Lesson start",f":clock1: <t:{lesson_start_timestamp}:R>",False)
+        ]
+        embed = auto_embed(
+            type = "default",
+            author = COG_TYPE,
             author_url = COG_LINK,
-            title = title,
-            url = LessonLink if LessonOnline else None,
+            title = lesson_title,
             description = description,
             fields = fields,
-            schoolname = SchoolName,
-            iconurl = SchoolIconLink if SchoolIconLink is not None else None,
-            colour = EmbedColour,
-            thumbnail = SchoolIconLink if SchoolIconLink is not None else None,
+            colour = colour,
+            thumbnail = image_link if image_link else None
         )
+        await self.bot.rest.create_message(channel=channel_id,embed=embed)
         
-        await self.bot.rest.create_message(channel=OutPutChannel,embed=embed)
-   
     async def send_lesson_countdown(self,*args):
         """
-        Sends lesson countdowns at the appropriate warning times, only pinging users who
-        have opted in for pings. (Figure out a way for only opt in people to see this)
-        
-        Output
-        ------
-        `@Role your lesson is in x minutes!`
+        Creates and sends a countdown for a given lesson
+        The decision to send the countdown / embed is also made here
         """
+        # Parsing args
         lesson = args[0]
-        WarningTime = args[1]
-        ActualWarningTimes: list[int] = args[2]
+        alert_time = args[1]
+        lesson_alert_times: list = args[2]
         
-        GroupID = lesson[1]       
-        # Can assume that the current datetime is the time the lesson is sent
-        WarningDatetime = datetime.datetime.today()
-        if self.is_datetime_in_holiday(GroupID,WarningDatetime):
-            return # No lessons during a holiday so no need to carry on with this function
-        if WarningTime == ActualWarningTimes[0]:
-            await asyncio.sleep(2) # Prevents countdown from appearing before embed
+        # This countdown will only occur at lesson_start - alert_time.
+        # Meaning a current datetime can be used instead of calculating
+        # the current lesson
+        now = datetime.datetime.today()
         
-        GroupInfo: list[str] = db.record("SELECT * FROM LessonGroups WHERE GroupID = ?",GroupID)
+        group_id = lesson[1]
+        if self.is_datetime_in_holiday(group_id, now):
+            # No lessons during a group's holiday
+            return
         
-        OutputPingRoleID = GroupInfo[6]
-        OutputChannelID = int(GroupInfo[9])
+        alert_time_index = lesson_alert_times.index(alert_time) # Finds out what alert time this countdown is refering to
         
-        if WarningTime == 0:
-            await self.bot.rest.create_message(OutputChannelID,f"<@&{OutputPingRoleID}> your lesson is now!",role_mentions=True)
-            await self.update_time_channels(GroupID)
-        else:
-            WarningTimeIndex = ActualWarningTimes.index(WarningTime)
-            # Shouldn't create an error when finding +1 th in a list as the last element is always 0 and is handled by the above statement.
-            DeleteAfter = (ActualWarningTimes[WarningTimeIndex] - ActualWarningTimes[WarningTimeIndex+1])*60
-            message = await self.bot.rest.create_message(OutputChannelID,f"<@&{OutputPingRoleID}> your lesson is in `{format_timespan(WarningTime*60)}`",role_mentions=True)
-            await asyncio.sleep(DeleteAfter)
-            await message.delete()
-        
-    def is_datetime_in_holiday(self,GroupID,DateTimeInput: datetime.datetime) -> bool:
-        """
-        Takes the datetime of a target lesson embed or countdown and checks if it takes place
-        during a group's set holiday.
-        """
-        Holidays = db.records("SELECT * FROM Holidays WHERE GroupID = ?",str(GroupID))
-        for holiday in Holidays:
-
-            StartDateTime: datetime = holiday[2]
-            EndDateTime: datetime = holiday[3]
-
-            if StartDateTime<=DateTimeInput<=EndDateTime: # If current time is inbetween these dates
-                return True
-        else: # If there are no holidays or it's not in a holiday
-            return False
-    
-    def is_datetime_in_a_holiday(self,DateTimeInput,Holiday):
-        """
-        Given a lesson datetime and a holidays, check if that lesson occours in holiday on a given date
-        
-        This is similar to `is_datetime_in_holiday` but does not make any calls to the database and only
-        checks one holiday at a time
-        """
-        StartDateTime: datetime = Holiday[2]
-        EndDateTime: datetime = Holiday[3]
-        
-        return StartDateTime<=DateTimeInput<=EndDateTime
-    
-    async def update_time_channels(self,GroupID: str):
-        """
-        Updates the voice channel names to show the correct day and times of the next lesson.
-        Uses the `get_next_lesson` function for a single group and recovers the information
-        from there.
-
-        Args
-        ----
-            GroupID (int): GroupID from Groups Table in database
-        """
-        NextLesson = self.get_next_lesson((str(GroupID),))[0]
-        GroupInfo = db.record("SELECT * FROM LessonGroups WHERE GroupID = ?",GroupID)
-
-        DayOfWeek = int(NextLesson[4])      
-        StartTime = NextLesson[6]
-        EndTime = NextLesson[7]
-        StartDateTime = datetime.datetime.strptime(StartTime,HM_FMT).time()
-        EndDateTime = datetime.datetime.strptime(EndTime,HM_FMT).time()
-        NLDayID = int(GroupInfo[10])
-        NLTimeID = int(GroupInfo[11])
-        NLDayStr = f"Next Lesson: {DAYS_OF_WEEK[DayOfWeek].capitalize()}"
-        NLTimeStr = f"Time: {StartDateTime.strftime('%H:%M')} - {EndDateTime.strftime('%H:%M')}"
-        
-        await self.bot.rest.edit_channel(NLDayID,name=NLDayStr)
-        await self.bot.rest.edit_channel(NLTimeID,name=NLTimeStr)    
-        
-    def is_datetime_in_lesson(self, GroupIDs: tuple[str] | str, DatetimeInput: datetime.datetime) -> bool:
-        """
-        Converts a datetime object to a lesson date to be searched. A datetime method is chosen
-        instead of a day and time method to accomodate timetables with holidays.
-
-        Args
-        ----
-            GroupIDs (tuple): A tuple of all GroupIDs to search through
-            datetime_input (datetime): A chosen datetime object to look through
-
-        Returns
-        -------
-            bool: Returns a confirmation of wether or not this datetime is in a lesson, it does
-            NOT give information about the lesson
-        """
-        # Just searches through any lessons that occur on currentdate.weekday(). then checks if current time
-        # falls between any of the start and end times in the lesson list
-        if not (isinstance(GroupIDs,tuple) or isinstance(GroupIDs, list)):
-            GroupIDs = (GroupIDs,) # Turns single input into tuple
-        GroupIDs = tuple(map(str,GroupIDs)) # Turns all elements to strings)
-        
-        InputTime = DatetimeInput.time().strftime(HMS_FMT)
-        InputWeekday = DatetimeInput.weekday()
-        Lessons = self.get_non_holiday_lessons_from_GroupIDs(GroupIDs, DatetimeInput)
-        LessonsOnWeekday = [x for x in Lessons if x[4] == InputWeekday]
-        LessonsDuringDatetime = [x for x in LessonsOnWeekday if (int(x[6]+"00") <= int(InputTime) <= int(x[7]+"00"))]
-        if LessonsDuringDatetime == []:
-            return False
-        else:
-            return True
-    
-    def get_lesson_during_datetime(self, GroupIDs: tuple, DatetimeInput: datetime) -> tuple | None:
-        """
-        Similar to `is_datetime_in_lesson`, it uses a datetime object and a tuple of GroupIDs to find out
-        if a chosen datetime takes place during a lesson. It will then return this lesson if found or None
-        if not found
-
-        Args:
-            GroupIDs (tuple): A tuple of all GroupIDs to search through
-            datetime_input (datetime): A chosen datetime object to look through
-
-        Returns:
-            tuple or None: Returns a tuple containing lesson information or None
-        """
-        if not (isinstance(GroupIDs,tuple) or isinstance(GroupIDs, tuple)):
-            GroupIDs = (GroupIDs,) # Turns single input into tuple
-        GroupIDs = list(map(str,GroupIDs)) # Turns all elements to strings)
-        InputTime = DatetimeInput.time().strftime(HMS_FMT)
-        InputWeekday = DatetimeInput.weekday()
-        Lessons = db.records(f"SELECT * FROM Lessons WHERE GroupID IN ({','.join(GroupIDs)}) ORDER BY DayOfWeek ASC, StartTime ASC")
-        Holidays = db.records(f"SELECT * FROM Holidays WHERE GroupID IN ({','.join(GroupIDs)})")
-        # Checks for any holidays
-        for Holiday in Holidays:
-            HolidayGroupID = Holiday[1]
-            if self.is_datetime_in_a_holiday(DatetimeInput,Holiday):
-                for i, Lesson in enumerate(Lessons):
-                    """
-                    Since people can be in multiple groups and those groups can have different
-                    holidays, this only excludes lessons that are currently in a holiday. Meaning
-                    it will not just remove all lessons if only one group is in a holiday
-                    """
-                    LessonGroupID = Lesson[1]
-                    if LessonGroupID == HolidayGroupID:
-                        Lessons.pop(i)
-        if Lessons == []:
-            return False
-        LessonsOnWeekday = [x for x in Lessons if x[4] == InputWeekday]
-        LessonsDuringDatetime = [x for x in LessonsOnWeekday if (int(x[6]+"00") <= int(InputTime) <= int(x[7]+"00"))]
-        if LessonsDuringDatetime == []:
-            return None
-        else:
-            return LessonsDuringDatetime[0] # Assuming one lesson at a time
-    
-    def get_timetable(self,UserID = None, GroupIDs: tuple[str] | str  = None, DatetimeInput: datetime.datetime=None) -> list | None:
-        """
-        Uses either a UserID or a GroupID to retrieve a timetable in its entirety.
-        Added option to search for a datetime object
-
-        Args:
-            UserID (optional): Discord UserID. Defaults to None.
-            GroupID (int, optional): Database ID. Defaults to None.
-            datetime_input (int, optional): Datetime object to be converted. Defaults to None.
-
-        Returns:
-            list or None: [description]
-        """
-        if UserID is None and GroupIDs is None:
-            raise ValueError("Please select either a group or a user")
-        if UserID is not None:
-            GroupIDs = self.get_group_ids_from_user(UserID)
-        if GroupIDs is not None:
-            if not (isinstance(GroupIDs,tuple) or isinstance(GroupIDs, list)):
-                GroupIDs = (GroupIDs,) # Turns single input into tuple
-            GroupIDs = tuple(map(str,GroupIDs)) # Turns all elements to strings)
-        # Get timetable from GroupIDs
-        # Gets timetable
-        if DatetimeInput is None:
-            Lessons = db.records(f"SELECT * FROM Lessons WHERE GroupID IN (?) ORDER BY DayOfWeek ASC, StartTime ASC",(','.join(GroupIDs)))
-        else:
-            # Checks if datetime is in a holiday
-            if self.get_non_holiday_lessons_from_GroupIDs(GroupIDs,DatetimeInput):
-                pass
-            InputWeekday = DatetimeInput.weekday()
-            Lessons = self.get_non_holiday_lessons_from_GroupIDs(GroupIDs,DatetimeInput)
-            if Lessons is None:
-                return None
-            Lessons = [x for x in Lessons if x[4] == InputWeekday]
-        if Lessons == []:
-            return None
-        else:
-            return Lessons
-        
-    def get_non_holiday_lessons_from_GroupIDs(self,GroupIDs: tuple[int] | str,DatetimeInput: datetime.datetime) -> list | None:
-        """
-        Gets tuple of groupIDs and a datetime, will return any lessons
-        that aren't during a holiday or None if there aren't any
-        """
-        GroupIDs = tuple(map(int,GroupIDs))
-        GroupIDs = f"({GroupIDs[0]})" if len(GroupIDs) == 1 else GroupIDs
-        Lessons = db.records(f"SELECT * FROM Lessons WHERE GroupID IN {GroupIDs} AND DayOfWeek = ? ORDER BY StartTime ASC",DatetimeInput.weekday())
-        Holidays = db.records(f"SELECT * FROM Holidays WHERE GroupID IN {GroupIDs}")
-        # Checks for any holidays
-        for Holiday in Holidays:
-            HolidayGroupID = Holiday[1]
-            if self.is_datetime_in_a_holiday(DatetimeInput,Holiday):
-                """
-                Since people can be in multiple groups and those groups can have different
-                holidays, this only excludes lessons that are currently in a holiday. Meaning
-                it will not just remove all lessons if only one group is in a holiday
-                """
-                Lessons = [x for x in Lessons if x[1] != HolidayGroupID]
-        if Lessons == []:
-            return None
-        else:
-            return Lessons
-            
-    def get_group_ids_from_user(self,UserID) -> tuple | None:
-        """
-        Searches through the Students table on database for a discord UserID
-        Will return a tuple of GroupIDs if found and None is the user isn't in
-        any groups.
-        """
-        GroupIDs = db.column("SELECT GroupID FROM Students WHERE UserID = ?",str(UserID))
-        if GroupIDs == []:
-            return None
-        else:
-            GroupIDs = tuple(map(str,GroupIDs))
-            return GroupIDs
-    
-    def get_group_id_from_input(self,GroupInput) -> tuple | None:
-        """
-        Searches through the Groups table for an input.
-        This input could be a GroupCode or GroupName
-        Similar to above, it will return the group id of the selected group
-        """
-        GroupIDs = db.column("SELECT * FROM LessonGroups WHERE GroupName = ? OR GroupCode = ?",GroupInput,GroupInput)
-        if GroupIDs == []:
-            return None
-        else:
-            GroupIDs = tuple(map(str,GroupIDs))
-            return GroupIDs
-    
-    def get_next_lesson(self,GroupIDs: tuple[int] | str) -> tuple and datetime.datetime | None:
-        """
-        Uses the current datetime to find the next occourance of a lesson in a
-        tuple of groups. 
-        
-        Returns a Lesson tuple from the database
-        """
-        if not (isinstance(GroupIDs,tuple) or isinstance(GroupIDs, tuple)):
-            GroupIDs = (GroupIDs,) # Turns single input into tuple
-        GroupIDs = tuple(map(str,GroupIDs)) # Turns all elements to strings
-        
-        CurrentDateTime = datetime.datetime.today()
-        CurrentTime = CurrentDateTime.time()
-        Lessons = db.records(f"SELECT * FROM Lessons WHERE GroupID IN ({','.join(GroupIDs)}) ORDER BY DayOfWeek ASC, StartTime ASC")
-        Holidays = db.records(f"SELECT * FROM Holidays WHERE GroupID IN ({','.join(GroupIDs)})")
-        while Lessons != []: # If there's no lessons this will run forever
-            LessonsForDay = Lessons.copy()
-            # Checks for any holidays
-            for Holiday in Holidays:
-                HolidayGroupID = Holiday[1]
-                if self.is_datetime_in_a_holiday(CurrentDateTime,Holiday):
-                    # self.get_non_holiday_lessons_from_GroupIDs not used because it has custom elements in this one
-                    """
-                    Since people can be in multiple groups and those groups can have different
-                    holidays, this only excludes lessons that are currently in a holiday. Meaning
-                    it will not just remove all lessons if only one group is in a holiday
-                    """
-                    LessonsForDay = [x for x in LessonsForDay if x[1] != HolidayGroupID]
-            # Skips to next day if no lessons are there anymore (e.g if it falls on a holiday for all group(s) involved)
-            if LessonsForDay == []:
-                CurrentDateTime += datetime.timedelta(days=1)
-                CurrentTime = datetime.time(hour=0,minute=0,second=0)
+        # Checks for current time being in a lesson
+        if self.is_datetime_in_lesson(group_id, now) is None: # None = datetime is not in any lessons in the group
+            # If this countdown is not in a lesson
+            if alert_time_index == 0:
+                # Sends the embed, since this is the first countdown
+                await self.send_lesson_embed(lesson)
+                await asyncio.sleep(2) # This ensures that the lesson embed always comes before the lesson countdown
+            else:
+                # If this countdown is not the first in the alert list
                 
-                continue
-            # Checks if a lesson is on that weekday
-            CurrentWeekday = CurrentDateTime.weekday()
-            LessonsOnWeekday = [x for x in LessonsForDay if x[4] == CurrentWeekday]
-            if LessonsOnWeekday == []:
-                # If there are no lessons on that weekday
-                CurrentDateTime += datetime.timedelta(days=1)
-                CurrentTime = datetime.time(hour=0,minute=0,second=0)
-                continue
-            # Since there are lessons on this datetime, it will find the next occourance
-            LessonsAfterTime = [x for x in LessonsOnWeekday if datetime.datetime.strptime(x[6],HM_FMT).time() > CurrentTime]
-            if LessonsAfterTime == []: # If there are no lessons after the current time
-                CurrentDateTime += datetime.timedelta(days=1)
-                CurrentTime = datetime.time(hour=0,minute=0,second=0)
-                continue
-            NextLesson = (LessonsAfterTime[0])
-            NextLesssonDateTime = datetime.datetime.combine(CurrentDateTime.date(),datetime.datetime.strptime(LessonsAfterTime[0][6],HM_FMT).time())
-            break
-        return NextLesson, NextLesssonDateTime
+                # Find the last alert time and check if that was in a lesson
+                last_alert_time = lesson_alert_times[alert_time_index-1]
+                time_of_last_alert = now - datetime.timedelta(minutes = (alert_time - last_alert_time))
+                if self.is_datetime_in_lesson(group_id, time_of_last_alert) is None:
+                    # This means that the last countdown wasn't in a lesson, meaning an embed should have already sent
+                    pass
+                else:
+                    # This means that the last countdown was in a lesson, but this one isn't. Meaning this is the first
+                    # out of lesson countdown and therefore should send an embed
+                    await self.send_lesson_embed(lesson)
+                    await asyncio.sleep(2)
+        else:
+            # If current time is in a lesson
+            
+            if alert_time == 0:
+                # If the time is in a lesson, but the lesson is starting, the embed MUST be shown
+                if len(lesson_alert_times) > 1: # Ensuring that 0 wasn't the only alert time
+                    last_alert_time = lesson_alert_times[alert_time_index-1] # No index check is needed, 0 is always the last alert time and if the index isn't 0, then there's always an item before (It'll work trust me)
+                    time_of_last_alert = now - datetime.timedelta(minutes = (alert_time - last_alert_time))
+                    if self.is_datetime_in_lesson(group_id, time_of_last_alert) is None:
+                        # If the last alert time wasn't in a lesson then an embed has already been sent
+                        pass
+                    else:
+                        # The last alert time was in a lesson, therefore an embed must be sent
+                        await self.send_lesson_embed(lesson)
+                        await asyncio.sleep(2)
+                else:
+                    # There is only one alert, meaning it MUST be sent
+                    await self.send_lesson_embed(lesson)
+                    await asyncio.sleep(2) 
+                    
+                    
+        # Only valid lesson countdowns will run beyond this point
+        
+        group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?",group_id)
+        group_id = group_info[0]
+        ping_role_id = int(group_info[6])
+        channel_id = int(group_info[9])
+        school: str = group_info[15]        
+        
+        # For lincoln uni only, hyperlink to attendance registration
+        if school.lower() == "university of lincoln":
+            final_output_msg = f"<@&{ping_role_id}> your lesson is now!"
+            button = (
+                bot.rest.build_action_row()
+                .add_button(ButtonStyle.LINK, "https://registerattendance.lincoln.ac.uk")
+                .set_label("Attendance")
+                .add_to_container()
+            )
+            # Will create a button if it's from the UoL, or none if it's any other school
+            components = [button]
+        else:
+            components = []
+        
+        # If the lesson is starting
+        if alert_time == 0:
+            await self.bot.rest.create_message(channel_id,final_output_msg,role_mentions=True, components = components)
+            asyncio.sleep(2) # Ensures current lesson isn't caught
+            await self.update_time_channels(group_id)
+        else:
+            # Creating the time until message. delete_after is calculated by checking how long it is until the next countdown **should** be sent
+            # Shouldn't create an error when finding +1 th in a list as the last element is always 0 and is handled by the above statement.
+            delete_after = (lesson_alert_times[alert_time_index] - lesson_alert_times[alert_time_index+1])*60
+            message = await self.bot.rest.create_message(channel_id,f"<@&{ping_role_id}> your lesson is in `{format_timespan(alert_time*60)}`",role_mentions=True)
+            await asyncio.sleep(delete_after)
+            await message.delete()
+            # TODO: Figure out a way for this to work even on a bot restart
     
-    def get_assignments_for_lesson(self, lesson: list[str]) -> list[str] | None:
+    def get_week_start_datetimes(self,week_num_str: str, group_start_date: datetime.datetime) -> list[datetime.datetime | list[datetime.datetime]]:
         """
-        Takes a lesson entry and searches for any and all assignments due 
-        30 mins before <= lesson <= 30 mins after as long as those time brackets
-        don't fall in another lesson
+        Takes in a week num string (1-5;7) = week nums 1,2,3,4,5,7 and a group
         
-        Returns None if no assignments are found
+        Returns an array of datetimes dependant on the group's week 1 start date.
+        If there is a range of weeks, a list is given showing the start and end week
+        If there is a single week, a single datetime object is given
+        Only accepts a week range (x-y) and/or a single week
+        """
         
-        NOTE: TO BE MOVED TO ASSIGNMENT FUNCS 
+        week_datetimes = []
+        
+        week_nums = week_num_str.split(";")
+        
+        for item in week_nums:
+            try:
+                if "-" in item: # x-y week date
+                    item = item.split("-")
+                    if len(item) > 2:
+                        raise ValueError # Only accepts a start and end value
+                    start_week = int(item[0])
+                    end_week = int(item[1])
+                    start_datetime = group_start_date + datetime.timedelta(days=((start_week-1) * 7)) # start_week - 1 because if the start week is 1, then 7 days should not be added.
+                    end_datetime = group_start_date + datetime.timedelta(days= ((end_week-1) * 7)) # Same as above
+                    week_datetimes.append([start_datetime,end_datetime])
+                elif 1 <= int(item) <= 51:
+                    week_datetimes.append(group_start_date + datetime.timedelta(days=((int(item)-1) * 7)))
+            except Exception as e:
+                # This is an error when trying to convert a str to int. Which also means that it's not a valid week type
+                # It also allows me to create a catch all case for my own stupidity
+                logging.error(f"Failed to convert week range {item}: {e}")
+                
+        return week_datetimes
+    
+    async def add_group(
+        self,
+        ctx: tanjun.abc.Context,
+        group_name :str,
+        group_code: str,
+        start_date: datetime.datetime | str, # Parsing here
+        image_link: str,
+        alert_times: list[str] | str,
+        school: str = None
+        ) -> int:
+        """
+        Creates a lesson group
+        Returns the group id
+        """
+        # Parsing start_date
+        if isinstance(start_date, str):
+            try:
+                start_date = re.sub("[^0-9]","",start_date)
+                start_date = datetime.datetime.strptime(start_date,"%Y%m%d")
+            except:
+                raise CustomError("Invalid date","Please enter a valid start date")
+        elif isinstance(start_date, datetime.datetime):
+            # Stripping time info
+            start_date_str = start_date.strftime("%Y%m%d")
+            start_date = datetime.datetime.strptime(start_date_str,"%Y%m%d")
+        
+        # Parsing alert times
+        # Ensuring alert times are always comma seperated strings
+        if isinstance(alert_times,list):
+            alert_times = ",".join(alert_times)
+        
+        # Adding group if not added already
+        guild_id = str(ctx.guild_id)
+         # Checking if group name is in use
+        lesson_group = db.record("SELECT * FROM lesson_groups WHERE guild_id = ? AND group_name = ?", guild_id, group_name)
+        if lesson_group is not None:
+            raise CustomError("Group name in use","That group name is already being used in this server. Try using `/group delete` if that group is yours.")
+
+        # Creating roles
+        role = await bot.rest.create_role(
+            guild_id,
+            name=group_code,
+            colour = self.random_hex_colour()
+        )
+        ping_role = await bot.rest.create_role(
+            guild_id,
+            name=f"{group_code} PING",
+            colour = self.random_hex_colour()
+        )
+        
+        # Creating channels
+        category = await bot.rest.create_guild_category(
+            guild_id,
+            name = group_code,
+            permission_overwrites=[
+                hikari.PermissionOverwrite(
+                    id=ctx.guild_id,
+                    type=hikari.PermissionOverwriteType.ROLE,
+                    deny=(
+                        hikari.Permissions.VIEW_CHANNEL
+                    ),
+                ),
+                hikari.PermissionOverwrite(
+                    id=role.id,
+                    type=hikari.PermissionOverwriteType.ROLE,
+                    allow=(
+                        hikari.Permissions.VIEW_CHANNEL
+                    ),
+                )
+            ]
+        )
+        announcement_channel = await bot.rest.create_guild_text_channel(
+            guild_id,
+            name = f"lesson-announcements",
+            category = category.id,
+            permission_overwrites=[
+                hikari.PermissionOverwrite(
+                    id=ctx.guild_id,
+                    type=hikari.PermissionOverwriteType.ROLE,
+                    allow=(
+                        hikari.Permissions.VIEW_CHANNEL
+                    ),
+                ),
+            ]
+        )
+        nl_day_channel = await bot.rest.create_guild_voice_channel(
+            guild_id,
+            name = f"Next lesson day",
+            category = category.id,
+            permission_overwrites=[
+                hikari.PermissionOverwrite(
+                    id=ctx.guild_id,
+                    type=hikari.PermissionOverwriteType.ROLE,
+                    deny=(
+                        hikari.Permissions.CONNECT
+                    ),
+                ),
+            ]
+        )
+        nl_time_channel = await bot.rest.create_guild_voice_channel(
+            guild_id,
+            name = f"Next lesson time",
+            category = category.id,
+            permission_overwrites=[
+                hikari.PermissionOverwrite(
+                    id=ctx.guild_id,
+                    type=hikari.PermissionOverwriteType.ROLE,
+                    deny=(
+                        hikari.Permissions.CONNECT
+                    ),
+                ),
+            ]
+        )
+        
+        # Setting all other group variables
+        user_id = str(ctx.author.id)
+        role_id = str(role.id)
+        ping_role_id = str(ping_role.id)
+        colour = role.colour.raw_hex_code
+        category_id = str(category.id)
+        channel_id = str(announcement_channel.id)
+        nl_day_id = str(nl_day_channel.id)
+        nl_time_id = str(nl_time_channel.id)
+        if school is None:
+            school = "unknown"
+            
+        db.execute(
+            "INSERT INTO lesson_groups (user_id,group_name,group_code,guild_id,role_id,ping_role_id,colour,category_id,channel_id,start_date,nl_day_id,nl_time_id,image_link,alert_times,school) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            user_id,
+            group_name,
+            group_code,
+            guild_id,
+            role_id,
+            ping_role_id,
+            colour,
+            category_id,
+            channel_id,
+            start_date,
+            nl_day_id,
+            nl_time_id,
+            image_link,
+            alert_times,
+            school
+            )
+        db.commit()
+        id = db.lastrowid()
+        return id
+    
+    async def parse_timetable_csv(
+        self,
+        csv_input: bytes, 
+        ctx: tanjun.abc.Context, 
+        group_name: str,
+        group_code: str,
+        start_date: str,
+        image_link: str = None,
+        alert_times: str = None,
+        ):
+        """
+        Converts a UoL timetable export into the correct timetable info
+        and adds to the database
+        """
+        # Splitting the csv into rows
+        data = csv_input.decode('utf-8').splitlines()
+        timetable: list[str] = []
+        for line in data:
+            row = line.split(",")
+            try:
+                if str(row[0]) not in ("Event Id",""): # Doesn't include title and bottom row
+                    timetable.append(row)    
+            except IndexError:
+                pass
+        # Timetable is now an array containing rows:
+        # [EventID, Day, StartTime, FinishTime, "Weeks", week_nums, etc]        
+        if alert_times is None:
+            alert_times = DEFAULT_ALERT_TIMES
+        # Setting a UoL logo
+        if image_link is None:
+            image_link = "https://www.pngitem.com/pimgs/m/195-1956228_lincoln-university-uk-logo-hd-png-download.png"
+        # Creating the group
+        lesson_group_id = await self.add_group(ctx, group_name, group_code, start_date, image_link, alert_times, school="university of lincoln")
+        # Adding all the required teachers
+        teachers = set()
+        subjects = set()
+        for item in timetable:
+            staff = ((item[9]).split(";"))[0] # Only using first teacher
+            teachers.add(staff)
+            subject = item[5]
+            subjects.add(subject)
+        teachers = list(teachers)
+        subjects = list(subjects)
+        for teacher in teachers:
+            db.execute(
+                "INSERT INTO teachers (lesson_group_id, name, colour, online) VALUES (?,?,?,?)",
+                lesson_group_id,
+                teacher,
+                self.random_hex_colour(),
+                int(False) # Not online
+                )
+        for subject in subjects:
+            db.execute(
+                "INSERT INTO subjects (lesson_group_id,name,colour) VALUES (?,?,?)",
+                lesson_group_id,
+                subject,
+                self.random_hex_colour()
+            )
+        db.commit()
+        for item in timetable:
+            day_of_week = int(item[1]) - 1 # On CSV monday is 1 :thinkwhy:
+            start_time = re.sub("[^0-9]","",item[2])
+            end_time = re.sub("[^0-9]","",item[3])
+            week_nums = ((item[4])[5:]).replace(" ","")
+            subject = item[5]
+            room = item[8]
+            teacher = ((item[9]).split(";"))[0] # Only using first teacher
+            db.execute(
+                "INSERT INTO lessons (lesson_group_id, subject_id, teacher_id, day_of_week, week_numbers, start_time, end_time, room) VALUES (?,(SELECT subject_id FROM subjects WHERE name = ? AND lesson_group_id = ?),(SELECT teacher_id FROM teachers WHERE name = ? AND lesson_group_id = ?),?,?,?,?,?)",
+                lesson_group_id,
+                subject, lesson_group_id,
+                teacher, lesson_group_id,
+                day_of_week,
+                week_nums,
+                start_time,
+                end_time,
+                room
+            )
+        db.commit()
+        self.load_timetable()
+        await self.update_time_channels(lesson_group_id)
+        return lesson_group_id
+    
+    def get_day_timetable(self, group_ids: list[str] | str, current_datetime: datetime.datetime):
+        """
+        Takes a datetime and group/ tuple of groups and returns all lessons
+        on that day
+        """
+        group_ids = list(map(str,group_ids))
+        current_day_of_week = current_datetime.weekday()
+        weekly_timetable = self.get_week_timetable(group_ids, current_datetime)
+        daily_timetable = [i for i in weekly_timetable if int(i[4]) == current_day_of_week]
+        
+        return daily_timetable
+    
+    def get_week_timetable(self, group_ids: list[str] | str, current_datetime: datetime.datetime):
+        """
+        Takes a datetime and group/ tuple of groups and returns all lessons
+        in the surrounding week
+        """
+        
+        # Some lessons might have different start dates and week nums
+        if isinstance(group_ids, str):
+            group_ids = [group_ids]
+            
+        week_lessons = []
+        
+        for group_id in group_ids:
+            week_num = self.calculate_week_number(group_id, current_datetime)
+            lessons = self.get_lessons_for_week_num(group_id, week_num)
+            for lesson in lessons:
+                week_lessons.append(lesson) # Prevents arrays
+                
+        return week_lessons
+    
+    def calculate_week_number(self, group_id: str, current_datetime: datetime.datetime) -> int:
+        """
+        Get the monday that's just gone, then calc how many days since start_date, then divide by 7
+        then ur done
+        """
+        # Retrieving group info
+        group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?", group_id)
+        # Presence check
+        if group_info is None:
+            raise CustomError("Group not found","Group not found")
+        
+        start_date: datetime.datetime = group_info[10]
+        
+        # Getting the monday datetime of the week
+        current_datetime_weekday = current_datetime.weekday()
+        # To get the most recent Monday, it takes away the current day of the week. E.g if current_datetime
+        # is Wednesday (2), it takes away 2 days to get the monday
+        current_datetime_monday = current_datetime - datetime.timedelta(days = current_datetime_weekday)
+        
+        # Calculating how many days between current_datetime_monday and start_date
+        datediff_days = (current_datetime_monday - start_date).days
+        week_number = (datediff_days // 7) + 1 # Adding 1 to ensure weeks always start at 1
+
+        return week_number
+
+    def get_datetime_from_week_and_day(self,group_id,week_num,day_of_week):
+        pass
+
+    def get_lessons_for_week_num(self, group_ids: list[str] | str, week_num_input: int):
+        """
+        Might have to get all lessons, then parse depending on the string week number. If it's
+        equal to or a converted date range (get_week_start_datetime)? Probably the best way
+        for it, use that exact function with a group's lessons. 
+        """
+        if isinstance(group_ids, str):
+            group_ids = [group_ids]
+        
+        approved_lessons = []
+        for group_id in group_ids:
+            # Getting group info
+            group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?",group_id)
+            if group_info is None:
+                raise CustomError("No group found","Could not find that group.")
+            
+            # Getting all lessons
+            lessons: list[str] = db.records("SELECT * FROM lessons WHERE lesson_group_id = ?",group_id)
+            for lesson in lessons:
+                # Idea here is to get the week num ranges, if the week num is exactly week_num or
+                # the range contains the week num, then it's added to approved_lessons
+                week_numbers = (lesson[5]).split(";")
+
+                approved = False # To check if any week number is valid
+                for item in week_numbers:
+                    # Iterates through all week numbers checking if any of them
+                    # are in the target week number
+                    try:
+                        if "-" in item: # x-y week date
+                            item = item.split("-")
+                            if len(item) > 2:
+                                raise ValueError # Only accepts a start and end value
+                            start_week = int(item[0])
+                            end_week = int(item[1])
+                            if start_week <= week_num_input <= end_week: # if a is in x-y
+                                approved = True
+                        elif 1 <= int(item) <= 51:
+                            if int(item) == week_num_input: # if a == the week number
+                                approved = True
+                    except Exception as e:
+                        # This is an error when trying to convert a str to int. Which also means that it's not a valid week type
+                        # It also allows me to create a catch all case for my own stupidity
+                        logging.error(f"Failed to convert week range {item}: {e}")
+
+                if approved:
+                    approved_lessons.append(lesson)
+            
+        return approved_lessons
+                
+    def get_next_lesson(self,group_ids):
+        """
+        Takes a datetime and group/ tuple of groups and returns the next schedulked
+        lesson
+        
+        Finds all lessons on current datetime. Check if any occur after the time. If so
+        then use the first lesson
+        If no lessons on that day, add a day and continue. Stop when the new datetime is a
+        year after the current datetime
+        
+        Returns the next lesson and the datetime it occurs
+        """
+        if isinstance(group_ids, str):
+            group_ids = [group_ids]
+        
+        current_datetime = datetime.datetime.today()
+        current_time = current_datetime.time()
+        day_timetable = self.get_day_timetable(group_ids,current_datetime)
+        # Manual check on first day for next occurance
+        if day_timetable != []:
+            lessons_after_time = [x for x in day_timetable if datetime.datetime.strptime(x[6],HHMM_FORMAT).time() > current_time]
+            if lessons_after_time != []:
+                # If there is an item in lessons_after_time, then it is the next lesson
+                next_lesson = lessons_after_time[0]
+                start_time = next_lesson[6]
+                start_time_object = (datetime.datetime.strptime(start_time,HHMM_FORMAT)).time()
+                start_datetime = datetime.datetime.combine(current_datetime.date(),start_time_object)
+                return (lessons_after_time[0], start_datetime)
+        # Assuming either day_timetable is empty or lessons_after_time is empty
+        # (both meaning there is no valid next lesson for that day)
+        current_time = datetime.time(hour=0,minute=0,second=0)
+        found_lesson = False
+        while not found_lesson:
+            # Adding a day
+            current_datetime = current_datetime + datetime.timedelta(days = 1)
+            
+            # Check if the new datetime is within a year
+            days_since_original = (current_datetime - datetime.datetime.today()).days
+            if days_since_original > 365:
+                raise CustomError("No lessons found","I could not find any lessons within a year of that date")
+            
+            # New day timetable
+            day_timetable = self.get_day_timetable(group_ids,current_datetime)
+            if day_timetable != []:
+                # No time check required as the new time is the start of the day
+                next_lesson = day_timetable[0]
+                start_time = next_lesson[6]
+                start_time_object = (datetime.datetime.strptime(start_time,HHMM_FORMAT)).time()
+                start_datetime = datetime.datetime.combine(current_datetime.date(),start_time_object)
+                return (day_timetable[0], start_datetime)
+    
+    def get_non_holiday_lessons():
+        """
+        Takes a pre generated list of timetalbe info, and removes any lessons
+        that take place during a holiday. Will return the formatted timetable list
+        or None if the list is empty
         """
         pass
     
-    def get_assignments_for_datetime(self,datetime_input: datetime) -> list[str] | None:
+    def get_group_ids_from_user(self, user_id):
         """
-        Takes a datetime entry and searches for any and all assignments due
-        on that day.
+        Takes in a discord user ID and returns a list of
+        groups that the user is in
+        """
+        user_id = str(user_id)
         
-        Returns None if no assignments are found
-        
-        NOTE: TO BE MOVED TO ASSIGNMENT FUNCS 
+        group_ids = db.column("SELECT lesson_group_id FROM students WHERE user_id = ?",user_id)
+        return group_ids
     
+    def is_datetime_in_holiday(self,groupid,now):
+        """
+        Given a datetime and a group, check if that datetime occurs
+        during a group's holiday
+        """
+        return False
+    
+    def is_datetime_in_a_holiday():
+        """
+        Given a datetime and a specific holiday row, check if that datetime
+        occurs in that holiday
         """
         pass
     
-    def is_image_link_valid(self, link: str) -> bool:
+    async def update_time_channels(self, group_id):
         """
-        Validates a given link
+        Updates a group's time channels with next lesson
+        info
         """
-        if link is not None:
-            return validators.url(link)
+        group_id = str(group_id)
+        next_lesson, next_lesson_datetime = self.get_next_lesson(group_id)
+        group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?",group_id)
+        # Next lesson: DAY
+        # Time: HH:MM - HH:MM
+        day_of_week = int(next_lesson[4])      
+        start_time = next_lesson[6]
+        end_time = next_lesson[7]
+        start_time = datetime.datetime.strptime(start_time,HHMM_FORMAT).time()
+        end_time = datetime.datetime.strptime(end_time,HHMM_FORMAT).time()
+        nl_day_id = group_info[11]
+        nl_time_id = group_info[12]
+        nl_day_str = f"Next Lesson: {DAYS_OF_WEEK[day_of_week].capitalize()}"
+        nl_time_str = f"Time: {start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
+        
+        await self.bot.rest.edit_channel(nl_day_id,name=nl_day_str)
+        await self.bot.rest.edit_channel(nl_time_id,name=nl_time_str)    
     
-    def validate_hex_code(self, hex_code) -> bool:
+    def is_datetime_in_lesson(self, group_id,datetime):
         """
-        Uses regular expressions to validate a hex code
+        Used for /currentlesson, It takes in a datetime object and group id and
+        checks if any lessons occur during that datetime. If it does, it will return a tuple
+        of all lessons (as there may be multiple) that occur during this datetime. If none are
+        found, it returns None
         """
-        if hex is not None:
-            match = re.search(r'^(?:[0-9a-fA-F]{3}){1,2}$', hex)
-            return match
+        return None
     
-    def random_hex_colour(self) -> str:
+    def get_assignments_for_datetime():
         """
-        Generates a random hex colour
+        Retrieves all assignments that are due on a given
+        datetime
         """
+        pass
+    
+    def is_image_link_valid():
+        pass
+    
+    def validate_hex_code():
+        pass
+    
+    def random_hex_colour(self):
         hex = "{:06x}".format(random.randint(0, 0xFFFFFF))
         return hex
     
-    def generate_weeklyschedule_image(self, UserID, Group=None) -> Image:
-        """
-        Generates an image showing all the lessons, assignments and reminders for a user.
-        Option to search for a group's weeklyschedule, which does NOT show reminders.
-        """
+    def build_weeklyschedule_image():
         pass
     
-    def is_student_mod(self,ctx: tanjun.abc.Context, GroupID: int) -> bool:
-        """
-        Checks the students table and sees if a student is a moderator for a given group
-        """
-        UserID = ctx.author.id
-        if UserID in OWNER_IDS:
+    def is_student_mod(self, lesson_group_id, user_id):
+        if int(user_id) in OWNER_IDS:
             return True
-        StudentInfo = db.record("SELECT * FROM Students WHERE UserID = ? AND GroupID = ?",UserID,GroupID)
-        Moderator = StudentInfo[5]
-        return Moderator
+        # Checking for group_owner
+        if self.is_student_owner(lesson_group_id,user_id):
+            return True
+        
+        student = db.record("SELECT * FROM students WHERE lesson_group_id = ? AND user_id = ?",str(lesson_group_id),str(user_id))
+        if student is None:
+            return False
+        moderator = bool(student[5])
+        return moderator
+    def is_student_owner(self, lesson_group_id, user_id):
+        if int(user_id) in OWNER_IDS:
+            return True
+        group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?", lesson_group_id)
+        owner_id = str(group_info[1])
+        return str(user_id) == owner_id
     
-    def is_student_owner(self,ctx: tanjun.abc.Context, GroupID: int) -> bool:
-        """
-        Checks the groups table and sees if a student is the owner of a given group
-        """
-        UserID = ctx.author.id
-        if UserID in OWNER_IDS:
-            return True
-        GroupInfo = db.record("SELECT * FROM Groups WHERE GroupID = ?",GroupID)
-        return UserID == GroupInfo[1]
-
 @tanjun.as_loader
 def load_components(client: Client):
-    # Tanjun loader here as Client looks through every python
-    # file for this func and causes an error if not present
-    # NOTE: This function is of no use, please ignore it
     pass
