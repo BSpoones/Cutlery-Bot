@@ -28,7 +28,6 @@ async def get_definition(word):
             response = await requests.get(html)
             result = BeautifulSoup(response.text, parser="html.parser", features="lxml")
             types = result.findAll("h3")
-            length = len(types)
             lists = result.findAll("ul")
             out = {}
             for a in types:
