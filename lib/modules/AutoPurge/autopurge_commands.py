@@ -10,9 +10,12 @@ from tanjun import Client
 from tanjun.abc import SlashContext
 from humanfriendly import format_timespan
 
+from lib.core.error_handling import CustomError
 from lib.modules.AutoPurge import CB_AUTOPURGE, COG_LINK, COG_TYPE
-from ..Logging.logging_funcs import CHANGE_ARROW
-from ...utils.utilities import parse_timeframe_from_string, auto_embed
+from lib.modules.Logging.logging_funcs import CHANGE_ARROW
+from lib.utils.utils import parse_timeframe_from_string
+from lib.utils.command_utils import auto_embed, log_command
+
 from ...db import db
 
 autopurge_component = tanjun.Component()
@@ -20,48 +23,31 @@ autopurge_component = tanjun.Component()
 autopurge_group = autopurge_component.with_slash_command(tanjun.slash_command_group("autopurge","AutoPurge module"))
 
 @autopurge_group.with_command
+@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
 @tanjun.with_bool_slash_option("ignore_pinned","Choose to purge pinned messages or keep them (Default = False (keep pinned messages))", default=False)
-@tanjun.with_channel_slash_option("channel","Select a channel to setup an AutoPurge instance (Default = This channel)",default= None)
+@tanjun.with_channel_slash_option("channel","Select a channel to setup an AutoPurge instance (Default = This channel)",types = [hikari.GuildTextChannel],default= None)
 @tanjun.with_str_slash_option("cutoff","Messages before this timeframe will be purged")
 @tanjun.as_slash_command("setup","Sets up AutoPurge")
 async def autopurge_setup_command(ctx: SlashContext, cutoff, channel: hikari.InteractionChannel = None, ignore_pinned: bool = False):
     cutoff_seconds = (parse_timeframe_from_string(cutoff))
     if cutoff_seconds < 60 or cutoff_seconds > 1209595:
-        raise ValueError("Cutoff must range from 1 minute to 13 days 59 mins 55 seconds")
-    guild = ctx.get_guild()
-    member = ctx.member
+        raise CustomError("Invalid Cutoff","Cutoff must range from `1 minute` to `13 days 59 mins 55 seconds`")
+    
     if channel is None:
         channel = await ctx.fetch_channel()
         
-    # Calculating permissions for users
-    perms = tanjun.utilities.calculate_permissions(
-        member=member,
-        guild=guild,
-        roles={r.id: r for r in member.get_roles()},
-        channel = guild.get_channel(channel.id)
-    )
-    permissions = (str(perms).split("|"))
-    
-    # Checking if channel is a text channel
-    if str(channel.type.name) != "GUILD_TEXT":
-        raise ValueError("You can only select a text channel to AutoPurge.")
-    
-    # Checking if user appropriate permissions to create a logging instance
-    # If a user can't delete messages or manage a server, then the bot shouldn't do it on their behalf
-    if "MANAGE_GUILD" not in permissions or "MANAGE_MESSAGES" not in permissions:
-        raise PermissionError("You do not have permission to setup an AutoPurge instnace.")
     
     await ctx.defer()
     message = await ctx.fetch_initial_response()
     # Presence check
-    autopurge_instances = db.records("SELECT * FROM AutoPurge WHERE GuildID = ?",str(ctx.guild_id))
+    autopurge_instances = db.records("SELECT * FROM auto_purge WHERE guild_id = ?",str(ctx.guild_id))
     if autopurge_instances != []:
         for instance in autopurge_instances:
             if instance[2] == str(ctx.channel_id):
-                raise LookupError("This channel already has an autopurge instance.")
+                raise CustomError("Autopurge instance found","This channel already has an autopurge instance.")
             
     db.execute(
-        "INSERT INTO AutoPurge(GuildID,ChannelID,Cutoff,IgnorePinned, StatusLink, Enabled) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO auto_purge(guild_id,channel_id,cutoff,ignore_pinned, status_link, enabled) VALUES (?,?,?,?,?,?)",
         str(ctx.guild_id),
         str(ctx.channel_id),
         cutoff_seconds,
@@ -83,7 +69,7 @@ async def autopurge_setup_command(ctx: SlashContext, cutoff, channel: hikari.Int
     )
     
     await ctx.edit_initial_response(embed=embed)
-    
+    log_command(ctx, "autopurge setup",str(channel.id),str(cutoff))
     # Pinning the output message
     if not ignore_pinned: # No point pinning it if autopurge ignores pins
         try:
@@ -92,38 +78,19 @@ async def autopurge_setup_command(ctx: SlashContext, cutoff, channel: hikari.Int
             pass
 
 @autopurge_group.with_command
-@tanjun.with_channel_slash_option("channel","Select a channel to remove AutoPurge (Default = This channel)",default= None)
+@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
+@tanjun.with_channel_slash_option("channel","Select a channel to remove AutoPurge (Default = This channel)",types = [hikari.GuildTextChannel], default= None)
 @tanjun.as_slash_command("remove","Removes an AutoPurge instance")
-async def autopurge_disable_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):
-    guild = ctx.get_guild()
-    member = ctx.member
+async def autopurge_remove_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):
     if channel is None:
         channel = await ctx.fetch_channel()
-        
-    # Calculating permissions for users
-    perms = tanjun.utilities.calculate_permissions(
-        member=member,
-        guild=guild,
-        roles={r.id: r for r in member.get_roles()},
-        channel = guild.get_channel(channel.id)
-    )
-    permissions = (str(perms).split("|"))
-    
-    # Checking if channel is a text channel
-    if str(channel.type.name) != "GUILD_TEXT":
-        raise ValueError("You can only select a text channel to AutoPurge.")
-    
-    # Checking if user appropriate permissions to create a logging instance
-    # If a user can't delete messages or manage a server, then the bot shouldn't do it on their behalf
-    if "MANAGE_GUILD" not in permissions or "MANAGE_MESSAGES" not in permissions:
-        raise PermissionError("You do not have permission to delete an AutoPurge instnace.")
-    
+
     await ctx.defer()
     
     # Presence check
-    autopurge_instances = db.records("SELECT * FROM AutoPurge WHERE GuildID = ? AND ChannelID = ?",str(ctx.guild_id), str(channel.id))
+    autopurge_instances = db.records("SELECT * FROM auto_purge WHERE guild_id = ? AND channel_id = ?",str(ctx.guild_id), str(channel.id))
     if autopurge_instances == []:
-        raise LookupError("No AutoPurge instance found.\nUse `/autopurge setup` to set one up")
+        raise CustomError("No AutoPurge instance found","Use `/autopurge setup` to set one up")
     
     autopurge_instance = autopurge_instances[0]
     previous_status_link = autopurge_instance[5]
@@ -132,10 +99,10 @@ async def autopurge_disable_command(ctx: SlashContext, channel: hikari.Interacti
   
     
     db.execute(
-        "DELETE FROM AutoPurge WHERE AutoPurgeID = ?",
+        "DELETE FROM auto_purge WHERE auto_purge_id = ?",
         str(instance_id)  
                )
-    db.commit
+    db.commit()
     
     CB_AUTOPURGE.load_autopurge_instances()
     
@@ -148,6 +115,7 @@ async def autopurge_disable_command(ctx: SlashContext, channel: hikari.Interacti
         description = description,
         ctx=ctx
     )
+    log_command(ctx, "autopurge remove",str(channel.id))
     
     await ctx.edit_initial_response(embed=embed)
     if not ignore_pinned: # No point pinning it if autopurge ignores pins
@@ -157,43 +125,25 @@ async def autopurge_disable_command(ctx: SlashContext, channel: hikari.Interacti
             pass
 
 @autopurge_group.with_command
-@tanjun.with_channel_slash_option("channel","Select a channel to enable AutoPurge in (Default = This channel)",default= None)
+@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
+@tanjun.with_channel_slash_option("channel","Select a channel to enable AutoPurge in (Default = This channel)",types = [hikari.GuildTextChannel], default= None)
 @tanjun.with_str_slash_option("cutoff","Messages before this timeframe will be purged")
 @tanjun.as_slash_command("cutoff","Edit the AutoPurge cutoff for a given channel")
 async def autopurge_cutoff_command(ctx: SlashContext, cutoff: str, channel: hikari.InteractionChannel = None):
     cutoff_seconds = (parse_timeframe_from_string(cutoff))
     if cutoff_seconds < 60 or cutoff_seconds > 1209595:
-        raise ValueError("Cutoff must range from 1 minute to 13 days 59 mins 55 seconds")
+        raise CustomError("Invalid Cutoff","Cutoff must range from `1 minute` to `13 days 59 mins 55 seconds`")
     
-    guild = ctx.get_guild()
-    member = ctx.member
     if channel is None:
         channel = await ctx.fetch_channel()
         
-    # Calculating permissions for users
-    perms = tanjun.utilities.calculate_permissions(
-        member=member,
-        guild=guild,
-        roles={r.id: r for r in member.get_roles()},
-        channel = guild.get_channel(channel.id)
-    )
-    permissions = (str(perms).split("|"))
-    
-    # Checking if channel is a text channel
-    if str(channel.type.name) != "GUILD_TEXT":
-        raise ValueError("You can only select a text channel to AutoPurge.")
-    
-    # Checking if user appropriate permissions to create a logging instance
-    # If a user can't delete messages or manage a server, then the bot shouldn't do it on their behalf
-    if "MANAGE_GUILD" not in permissions or "MANAGE_MESSAGES" not in permissions:
-        raise PermissionError("You do not have permission to edit an AutoPurge instnace.")
     
     await ctx.defer()
     message = await ctx.fetch_initial_response()
     # Presence check
-    autopurge_instances = db.records("SELECT * FROM AutoPurge WHERE GuildID = ? AND ChannelID = ?",str(ctx.guild_id), str(channel.id))
+    autopurge_instances = db.records("SELECT * FROM auto_purge WHERE guild_id = ? AND channel_id = ?",str(ctx.guild_id), str(channel.id))
     if autopurge_instances == []:
-        raise LookupError("No AutoPurge instance found.\nUse `/autopurge setup` to set one up")
+        raise CustomError("No AutoPurge instance found","Use `/autopurge setup` to set one up")
     
     autopurge_instance = autopurge_instances[0]
     previous_status_link = autopurge_instance[5]
@@ -202,12 +152,12 @@ async def autopurge_cutoff_command(ctx: SlashContext, cutoff: str, channel: hika
     old_cutoff = int(autopurge_instance[3])
     
     db.execute(
-        "UPDATE AutoPurge SET Cutoff = ?, StatusLink = ? WHERE AutoPurgeID = ?",
+        "UPDATE auto_purge SET cutoff = ?, status_link = ? WHERE auto_purge_id = ?",
         cutoff_seconds,
         str(message.id),
         str(instance_id)  
                )
-    db.commit
+    db.commit()
     
     CB_AUTOPURGE.load_autopurge_instances()
     
@@ -220,7 +170,8 @@ async def autopurge_cutoff_command(ctx: SlashContext, cutoff: str, channel: hika
         description = description,
         ctx=ctx
     )
-    
+    log_command(ctx, "autopurge cutoff",str(channel.id),str(cutoff))
+
     await ctx.edit_initial_response(embed=embed)
     if not ignore_pinned: # No point pinning it if autopurge ignores pins
         try:
@@ -233,38 +184,19 @@ async def autopurge_cutoff_command(ctx: SlashContext, cutoff: str, channel: hika
             pass
 
 @autopurge_group.with_command
-@tanjun.with_channel_slash_option("channel","Select a channel to enable AutoPurge in (Default = This channel)",default= None)
+@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
+@tanjun.with_channel_slash_option("channel","Select a channel to enable AutoPurge in (Default = This channel)",types = [hikari.GuildTextChannel],default= None)
 @tanjun.as_slash_command("enable","Enables AutoPurge")
 async def autopurge_enable_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):    
-    guild = ctx.get_guild()
-    member = ctx.member
     if channel is None:
         channel = await ctx.fetch_channel()
-        
-    # Calculating permissions for users
-    perms = tanjun.utilities.calculate_permissions(
-        member=member,
-        guild=guild,
-        roles={r.id: r for r in member.get_roles()},
-        channel = guild.get_channel(channel.id)
-    )
-    permissions = (str(perms).split("|"))
-    
-    # Checking if channel is a text channel
-    if str(channel.type.name) != "GUILD_TEXT":
-        raise ValueError("You can only select a text channel to AutoPurge.")
-    
-    # Checking if user appropriate permissions to create a logging instance
-    # If a user can't delete messages or manage a server, then the bot shouldn't do it on their behalf
-    if "MANAGE_GUILD" not in permissions or "MANAGE_MESSAGES" not in permissions:
-        raise PermissionError("You do not have permission to edit an AutoPurge instnace.")
     
     await ctx.defer()
     message = await ctx.fetch_initial_response()
     # Presence check
-    autopurge_instances = db.records("SELECT * FROM AutoPurge WHERE GuildID = ? AND ChannelID = ?",str(ctx.guild_id), str(channel.id))
+    autopurge_instances = db.records("SELECT * FROM auto_purge WHERE guild_id = ? AND channel_id = ?",str(ctx.guild_id), str(channel.id))
     if autopurge_instances == []:
-        raise LookupError("No AutoPurge instance found.\nUse `/autopurge setup` to set one up")
+        raise CustomError("No AutoPurge instance found","Use `/autopurge setup` to set one up")
     
     autopurge_instance = autopurge_instances[0]
     previous_status_link = autopurge_instance[5]
@@ -274,19 +206,19 @@ async def autopurge_enable_command(ctx: SlashContext, channel: hikari.Interactio
     enabled = bool(autopurge_instance[6])
     
     if enabled:
-        raise ValueError("This AutoPurge instance is already enabled")
+        raise CustomError("AutoPurge already enabled","This AutoPurge instance is already enabled")
     
     db.execute(
-        "UPDATE AutoPurge SET Enabled = ?, StatusLink = ? WHERE AutoPurgeID = ?",
+        "UPDATE auto_purge SET enabled = ?, status_link = ? WHERE auto_purge_id = ?",
         int(True),
         str(message.id),
         str(instance_id)  
                )
-    db.commit
+    db.commit()
     
     CB_AUTOPURGE.load_autopurge_instances()
     
-    description = f"AutoPurge enabled in <#{channel.id}>\n\n**Cutoff**: `{format_timespan(cutoff)}` ({cutoff}s)"
+    description = f"AutoPurge enabled in <#{channel.id}>\n\n**Cutoff**: `{format_timespan(cutoff)}` ({cutoff:,}s)"
     embed = auto_embed(
         type="info",
         author=COG_TYPE,
@@ -295,6 +227,7 @@ async def autopurge_enable_command(ctx: SlashContext, channel: hikari.Interactio
         description = description,
         ctx=ctx
     )
+    log_command(ctx, "autopurge enable",str(channel.id))
     
     await ctx.edit_initial_response(embed=embed)
     if not ignore_pinned: # No point pinning it if autopurge ignores pins
@@ -308,38 +241,19 @@ async def autopurge_enable_command(ctx: SlashContext, channel: hikari.Interactio
             pass
 
 @autopurge_group.with_command
-@tanjun.with_channel_slash_option("channel","Select a channel to disable AutoPurge in (Default = This channel)",default= None)
+@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
+@tanjun.with_channel_slash_option("channel","Select a channel to disable AutoPurge in (Default = This channel)",types = [hikari.GuildTextChannel],default= None)
 @tanjun.as_slash_command("disable","Disables AutoPurge")
 async def autopurge_disable_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):
-    guild = ctx.get_guild()
-    member = ctx.member
     if channel is None:
         channel = await ctx.fetch_channel()
-        
-    # Calculating permissions for users
-    perms = tanjun.utilities.calculate_permissions(
-        member=member,
-        guild=guild,
-        roles={r.id: r for r in member.get_roles()},
-        channel = guild.get_channel(channel.id)
-    )
-    permissions = (str(perms).split("|"))
-    
-    # Checking if channel is a text channel
-    if str(channel.type.name) != "GUILD_TEXT":
-        raise ValueError("You can only select a text channel to AutoPurge.")
-    
-    # Checking if user appropriate permissions to create a logging instance
-    # If a user can't delete messages or manage a server, then the bot shouldn't do it on their behalf
-    if "MANAGE_GUILD" not in permissions or "MANAGE_MESSAGES" not in permissions:
-        raise PermissionError("You do not have permission to edit an AutoPurge instnace.")
-    
+
     await ctx.defer()
     message = await ctx.fetch_initial_response()
     # Presence check
-    autopurge_instances = db.records("SELECT * FROM AutoPurge WHERE GuildID = ? AND ChannelID = ?",str(ctx.guild_id), str(channel.id))
+    autopurge_instances = db.records("SELECT * FROM auto_purge WHERE guild_id = ? AND channel_id = ?",str(ctx.guild_id), str(channel.id))
     if autopurge_instances == []:
-        raise LookupError("No AutoPurge instance found.\nUse `/autopurge setup` to set one up")
+        raise CustomError("No AutoPurge instance found","Use `/autopurge setup` to set one up")
     
     autopurge_instance = autopurge_instances[0]
     previous_status_link = autopurge_instance[5]
@@ -348,15 +262,15 @@ async def autopurge_disable_command(ctx: SlashContext, channel: hikari.Interacti
     enabled = bool(autopurge_instance[6])
     
     if not enabled:
-        raise ValueError("This AutoPurge instance is already disabled")
+        raise CustomError("AutoPurge already disabled","This AutoPurge instance is already disabled")
     
     db.execute(
-        "UPDATE AutoPurge SET Enabled = ?, StatusLink = ? WHERE AutoPurgeID = ?",
+        "UPDATE auto_purge SET enabled = ?, status_link = ? WHERE auto_purge_id = ?",
         int(False),
         str(message.id),
         str(instance_id)  
                )
-    db.commit
+    db.commit()
     
     CB_AUTOPURGE.load_autopurge_instances()
     
@@ -369,7 +283,7 @@ async def autopurge_disable_command(ctx: SlashContext, channel: hikari.Interacti
         description = description,
         ctx=ctx
     )
-    
+    log_command(ctx, "autopurge disable",str(channel.id))
     await ctx.edit_initial_response(embed=embed)
     if not ignore_pinned: # No point pinning it if autopurge ignores pins
         try:
@@ -382,38 +296,19 @@ async def autopurge_disable_command(ctx: SlashContext, channel: hikari.Interacti
             pass
 
 @autopurge_group.with_command
-@tanjun.with_channel_slash_option("channel","Select a channel to view the AutoPurge status in (Default = This channel)",default= None)
+@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
+@tanjun.with_channel_slash_option("channel","Select a channel to view the AutoPurge status in (Default = This channel)",types = [hikari.GuildTextChannel],default= None)
 @tanjun.as_slash_command("status","View the AutoPurge cutoff for a given channel")
 async def autopurge_status_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):
-    guild = ctx.get_guild()
-    member = ctx.member
     if channel is None:
         channel = await ctx.fetch_channel()
-        
-    # Calculating permissions for users
-    perms = tanjun.utilities.calculate_permissions(
-        member=member,
-        guild=guild,
-        roles={r.id: r for r in member.get_roles()},
-        channel = guild.get_channel(channel.id)
-    )
-    permissions = (str(perms).split("|"))
-    
-    # Checking if channel is a text channel
-    if str(channel.type.name) != "GUILD_TEXT":
-        raise ValueError("You can only select a text channel to AutoPurge.")
-    
-    # Checking if user appropriate permissions to create a logging instance
-    # If a user can't delete messages or manage a server, then the bot shouldn't do it on their behalf
-    if "MANAGE_GUILD" not in permissions or "MANAGE_MESSAGES" not in permissions:
-        raise PermissionError("You do not have permission to edit an AutoPurge instnace.")
-    
+
     await ctx.defer()
     message = await ctx.fetch_initial_response()
     # Presence check
-    autopurge_instances = db.records("SELECT * FROM AutoPurge WHERE GuildID = ? AND ChannelID = ?",str(ctx.guild_id), str(channel.id))
+    autopurge_instances = db.records("SELECT * FROM auto_purge WHERE guild_id = ? AND channel_id = ?",str(ctx.guild_id), str(channel.id))
     if autopurge_instances == []:
-        raise LookupError("No AutoPurge instance found.\nUse `/autopurge setup` to set one up")
+        raise CustomError("No AutoPurge instance found","Use `/autopurge setup` to set one up")
     
     autopurge_instance = autopurge_instances[0]
     previous_status_link = autopurge_instance[5]
@@ -424,15 +319,15 @@ async def autopurge_status_command(ctx: SlashContext, channel: hikari.Interactio
 
     
     db.execute(
-        "UPDATE AutoPurge SET StatusLink = ? WHERE AutoPurgeID = ?",
+        "UPDATE auto_purge SET status_link = ? WHERE auto_purge_id = ?",
         str(message.id),
         str(instance_id)  
                )
-    db.commit
+    db.commit()
     
     CB_AUTOPURGE.load_autopurge_instances()
     
-    description = f"AutoPurge is currently `{'enabled' if enabled else 'disabled'}` in <#{channel.id}>\n\n**Cutoff**: `{format_timespan(cutoff)}` ({cutoff}s)"
+    description = f"AutoPurge is currently `{'enabled' if enabled else 'disabled'}` in <#{channel.id}>\n\n**Cutoff**: `{format_timespan(cutoff)}` ({cutoff:,}s)"
     
     embed = auto_embed(
         type="info",
@@ -442,6 +337,7 @@ async def autopurge_status_command(ctx: SlashContext, channel: hikari.Interactio
         description = description,
         ctx=ctx
     )
+    log_command(ctx, "autopurge status",str(channel.id))
     
     await ctx.edit_initial_response(embed=embed)
     if not ignore_pinned: # No point pinning it if autopurge ignores pins
