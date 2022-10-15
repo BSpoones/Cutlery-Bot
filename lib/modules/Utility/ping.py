@@ -7,8 +7,9 @@ Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#Ping
 
 import tanjun
 from tanjun.abc import Context as Context
-from lib.core.bot import Bot
+
 from lib.core.client import Client
+from lib.utils.command_utils import auto_embed, log_command
 from . import COG_TYPE, COG_LINK
 
 ping_component = tanjun.Component()
@@ -17,7 +18,7 @@ ping_component = tanjun.Component()
 @tanjun.as_slash_command("ping","Gets the current ping of the bot")
 async def ping_command(ctx: Context):
     ping = ctx.shards.heartbeat_latency * 1000
-    embed = Bot.auto_embed(
+    embed = auto_embed(
         type="info",
         author=f"{COG_TYPE}",
         author_url = COG_LINK,
@@ -26,7 +27,7 @@ async def ping_command(ctx: Context):
         ctx=ctx
     )
     await ctx.respond(embed)
-    Bot.log_command(ctx,"ping")
+    log_command(ctx,"ping")
 
 @tanjun.as_loader
 def load_components(client: Client):
