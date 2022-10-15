@@ -6,12 +6,12 @@ Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#Uptime
 """
 
 import tanjun, time
-from lib.core.bot import Bot
-from lib.core.client import Client
 from tanjun.abc import Context as Context
 from humanfriendly import format_timespan
-from . import COG_TYPE, COG_LINK
 
+from lib.core.client import Client
+from lib.utils.command_utils import auto_embed, log_command
+from . import COG_TYPE, COG_LINK
 
 uptime_component = tanjun.Component()
 
@@ -19,7 +19,7 @@ uptime_component = tanjun.Component()
 @tanjun.as_slash_command("uptime","Gets the current uptime of the bot")
 async def uptime_command(ctx: Context):
     uptime = format_timespan((time.perf_counter()-ctx.client.metadata["start time"]))
-    embed = Bot.auto_embed(
+    embed = auto_embed(
         type="info",
         author=f"{COG_TYPE}",
         author_url = COG_LINK,
@@ -28,7 +28,7 @@ async def uptime_command(ctx: Context):
         ctx=ctx
     )
     await ctx.respond(embed)
-    Bot.log_command(ctx,"uptime")
+    log_command(ctx,"uptime")
 
 @tanjun.as_loader
 def load_components(client: Client):
