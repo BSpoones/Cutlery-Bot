@@ -86,7 +86,7 @@ async def server_info_command(ctx: Context):
         ctx=ctx
     )
     await ctx.respond(embed=embed)
-    Bot.log_command(ctx,"serverinfo")
+    log_command(ctx,"serverinfo")
 
 
 @tanjun.as_loader
