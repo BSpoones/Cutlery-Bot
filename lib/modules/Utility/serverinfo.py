@@ -8,15 +8,17 @@ Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#Serverinfo
 
 import hikari, tanjun
 from collections import Counter
-from lib.core.bot import Bot
-from lib.core.client import Client
 from tanjun.abc import Context as Context
+
+from ...db import db
+from lib.core.client import Client
+from lib.utils.command_utils import auto_embed, log_command
 from . import COG_TYPE, COG_LINK
 
 serverinfo_create_component = tanjun.Component()
 
 @serverinfo_create_component.add_slash_command
-@tanjun.as_slash_command("serverinfo","Shows the information on a selected server")
+@tanjun.as_slash_command("serverinfo","Shows information about your server")
 async def server_info_command(ctx: Context):
     guild = await ctx.fetch_guild()
     members = guild.get_members() # Only one call to cache
@@ -58,7 +60,7 @@ async def server_info_command(ctx: Context):
     created_on = int(guild.created_at.timestamp())
     fields = [
         ("Owner",f"<@{guild.owner_id}>",False),
-        ("ID",guild.id,False),
+        ("Server ID",guild.id,False),
         ("Created on", f":clock1: <t:{created_on}:d>  (<t:{created_on}:R>)", False),
         
         ("Members", len(members), True),
@@ -79,10 +81,13 @@ async def server_info_command(ctx: Context):
     total_command_count = db.count("SELECT COUNT(command_log_id) FROM command_logs")
     guild_command_count = db.count("SELECT COUNT(command_log_id) FROM command_logs WHERE guild_id = ?",str(ctx.guild_id))
     description = f"`{guild_command_count:,}` commands have been sent in this server\nThat's `{((guild_command_count/total_command_count)*100):.2f}%` of my total commands."
+    
+    embed = auto_embed(
         type="info",
-        author=f"{COG_TYPE}",
+        author=COG_TYPE,
         author_url = COG_LINK,
         title=f"**Server info on `{guild.name}`**",
+        description=description,
         fields=fields,
         thumbnail=guild.icon_url,
         ctx=ctx
