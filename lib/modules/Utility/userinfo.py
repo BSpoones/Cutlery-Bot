@@ -56,7 +56,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
     fields = [
             ("Username", str(target), False),
             ("Top role",f"{top_role.mention if (str(top_role) != '@everyone') else 'No roles'}", False),
-            ("Roles",(f"{' | '.join(r.mention for r in roles) if len(roles) > 0 else 'No roles'}"), False),
+            ("All Roles",(f"{' | '.join(r.mention for r in roles) if len(roles) > 0 else 'No roles'}"), False),
             (
                 "Activity", 
                 activity_str,
