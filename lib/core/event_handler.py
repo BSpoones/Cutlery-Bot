@@ -1,10 +1,14 @@
-import hikari, tanjun, logging, time, datetime
+import hikari, logging, time, datetime, asyncio
 from humanfriendly import format_timespan
-from data.bot.data import VERSION, OUTPUT_CHANNEL
-from lib.utils.utilities import update_bot_presence
-from lib.modules.Logging import logging_funcs
+
 from ..db import db
-from lib.modules.Logging import COG_LINK, COG_TYPE
+from data.bot.data import DARK_GREEN, DARK_RED, GREEN, RED, VERSION, OUTPUT_CHANNEL
+from lib.modules.Logging.filter import filter_message
+from lib.modules.Logging import COG_LINK, COG_TYPE, logging_funcs
+from lib.utils.utils import add_channel_to_db, add_guild_to_db, add_member_to_db, add_role_to_db, allocate_startup_db, update_bot_presence
+from lib.utils.utils import update_bot_presence
+from lib.utils.command_utils import auto_embed
+
 class EventHandler():
     def __init__(self, bot: hikari.GatewayBot):
         self.bot = bot
@@ -39,7 +43,6 @@ class EventHandler():
             hikari.RoleUpdateEvent : self.on_role_update_event,
             hikari.RoleDeleteEvent : self.on_role_delete_event,
             hikari.VoiceStateUpdateEvent : self.on_voice_state_update_event,
-        
         }    
     
     def subscribe_to_events(self):
@@ -47,21 +50,23 @@ class EventHandler():
         for key,value in self.subscriptions.items():
             try:
                 self.bot.event_manager.subscribe(key,value)
-                
             except:
                 logging.critical(f"Failed to subscribe to {value} with event {key}.")
         logging.info(f"{len(self.subscriptions.keys()):,} event(s) added")
 
     async def on_starting(self, event: hikari.StartingEvent):
-        logging.info("Starting Cutlery Bot.....")
+        logging.info("Starting Cutlery Bot")
     
     async def on_started(self, event: hikari.StartedEvent):
-        logging.info(f"Cutlery bot v{VERSION} Loaded!")
-        await update_bot_presence(self.bot) 
+        logging.info(f"Cutlery Bot v{VERSION} Loaded!")
+        await update_bot_presence(self.bot)
         db.insert_hikari_events()
+        await asyncio.sleep(2)
+        await allocate_startup_db(self.bot)
+        
         
     async def on_stopping(self, event):
-        logging.info("Stopping Cutlery Bot.....")
+        logging.info("Stopping Cutlery Bot")
         
     async def on_stopped(self, event):
         logging.info("Cutlery Bot Stopped!")
@@ -71,26 +76,27 @@ class EventHandler():
     # NOTE: The following events only affect the bot and therefore are set at a base level
     async def on_guild_join_event(self, event: hikari.GuildJoinEvent):
         await update_bot_presence(self.bot)
-        embed = self.bot.auto_embed(
+        embed = auto_embed(
             type="Logging",
             author=COG_TYPE,
             author_url = COG_LINK,
             title = f"Joined {event.guild.name}",
             description = f"Members: {event.guild.member_count}\nOwner: <@{event.guild.owner_id}>",
             thumbnail = event.guild.icon_url,
-            colour = hikari.Colour(0x00FF00)
+            colour = hikari.Colour(GREEN)
         )
+        await add_guild_to_db(event.guild)
         await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
         
     async def on_guild_unavailable_event(self, event: hikari.GuildUnavailableEvent):
         self.bot.client.metadata[f"UNAVAILABLE{event.guild_id}"] = datetime.datetime.now().timestamp()
         guild = await event.fetch_guild()
-        embed = self.bot.auto_embed(
+        embed = auto_embed(
             type="Logging",
             author=COG_TYPE,
             author_url = COG_LINK,
             title = f"`{guild.name}` is unavailable",
-            colour = hikari.Colour(0x990000)
+            colour = hikari.Colour(DARK_RED)
         )
         await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
         
@@ -107,29 +113,31 @@ class EventHandler():
                 return
             offline_time = (datetime.datetime.now().timestamp() - is_unavailable)
             offline_time_formatted = format_timespan(offline_time)
+            
             guild = await event.fetch_guild()
-            embed = self.bot.auto_embed(
+            embed = auto_embed(
                 type="Logging",
                 author=COG_TYPE,
                 author_url = COG_LINK,
                 title = f"`{guild.name}` is now available",
                 description = f"Guild downtime: `{offline_time_formatted}`",
-                colour = hikari.Colour(0x023020)
+                colour = hikari.Colour(DARK_GREEN)
             )
             self.bot.client.metadata.pop(f"UNAVAILABLE{event.guild_id}")
             await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
     
     async def on_guild_leave_event(self, event: hikari.GuildLeaveEvent):
         await update_bot_presence(self.bot)
-        embed = self.bot.auto_embed(
+        embed = auto_embed(
             type="logging",
             author=COG_TYPE,
             author_url = COG_LINK,
             title = f"Left {event.old_guild.name}",
             description = f"Members: {event.old_guild.member_count}\nOwner: <@{event.old_guild.owner_id}>",
-            colour = hikari.Colour(0xFF0000)
-            
+            colour = hikari.Colour(RED)
         )
+        db.execute("DELETE FROM guilds WHERE guild_id = ?", str(event.guild_id))
+        db.commit()
         await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
         
     async def on_ban_create_event(self, event: hikari.BanCreateEvent):
@@ -144,12 +152,16 @@ class EventHandler():
     
     # Channel events
     async def on_guild_channel_create_event(self, event: hikari.GuildChannelCreateEvent):
+        await add_channel_to_db(event.channel)
         await logging_funcs.guild_channel_create(self.bot,event)
     
     async def on_guild_channel_edit_event(self, event: hikari.GuildChannelUpdateEvent):
+        await add_channel_to_db(event.channel)
         await logging_funcs.guild_channel_edit(self.bot,event)
     
     async def on_guild_channel_delete_event(self, event: hikari.GuildChannelDeleteEvent):
+        db.execute("DELETE FROM channels WHERE channel_id = ?", str(event.channel.id))
+        db.commit()
         await logging_funcs.guild_channel_delete(self.bot,event)
     
     async def on_guild_pins_update_event(self, event: hikari.GuildPinsUpdateEvent):
@@ -163,20 +175,28 @@ class EventHandler():
 
     # Member events
     async def on_member_create_event(self, event: hikari.MemberCreateEvent):
+        await update_bot_presence(self.bot)
+        await add_member_to_db(event.member)
         await logging_funcs.on_member_create(self.bot,event)
     
     async def on_member_update_event(self, event: hikari.MemberUpdateEvent):
+        await add_member_to_db(event.member)
         await logging_funcs.on_member_update(self.bot, event)  
     
     async def on_member_delete_event(self, event: hikari.MemberDeleteEvent):
+        await update_bot_presence(self.bot)
         await logging_funcs.on_member_delete(self.bot,event)
+        db.execute("DELETE FROM guild_members WHERE guild_id = ? AND user_id = ?",str(event.guild_id),str(event.user_id))
+        db.commit()
     
     # Message events
     async def on_guild_message_create_event(self, event: hikari.GuildMessageCreateEvent):
         await logging_funcs.message_create(self.bot,event)
+        await filter_message(self.bot,event.message)
     
     async def on_guild_message_update_event(self, event: hikari.GuildMessageUpdateEvent):
         await logging_funcs.message_edit(self.bot, event)
+        await filter_message(self.bot,event.message)
             
     async def on_guild_message_delete_event(self, event: hikari.GuildMessageDeleteEvent):
         await logging_funcs.message_delete(self.bot,event)
@@ -198,15 +218,19 @@ class EventHandler():
 
     # Role events
     async def on_role_create_event(self, event: hikari.RoleCreateEvent):
+        await add_role_to_db(event.role)
         await logging_funcs.role_create(self.bot, event)
     
     async def on_role_update_event(self, event: hikari.RoleUpdateEvent):
+        await add_role_to_db(event.role)
         await logging_funcs.role_update(self.bot,event)
     
     async def on_role_delete_event(self, event: hikari.RoleDeleteEvent):
+        db.execute("DELETE FROM roles WHERE role_id = ?",str(event.role_id))
+        db.commit()
         await logging_funcs.role_delete(self.bot,event)
    
     # Voice events
     async def on_voice_state_update_event(self, event: hikari.VoiceStateUpdateEvent):
         await logging_funcs.on_voice_state_update(self.bot,event)
-    
+        
