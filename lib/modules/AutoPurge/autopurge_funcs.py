@@ -11,7 +11,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from lib.core.bot import bot
-from ...db import db
+from lib.db import db
 
 class AutoPurge:
     def __init__(self):
@@ -26,7 +26,7 @@ class AutoPurge:
         except:
             self.autopurge_scheduler = AsyncIOScheduler()
 
-        autopurge_instances = db.records("SELECT * FROM AutoPurge")
+        autopurge_instances = db.records("SELECT * FROM auto_purge")
         for instance in autopurge_instances:
             trigger = CronTrigger(
                 second=random.randint(30,59) # Prevents all autopurges from calling at the same time
