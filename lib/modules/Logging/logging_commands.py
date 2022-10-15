@@ -296,6 +296,74 @@ async def logging_remove_command(ctx: SlashContext, preset, channel: hikari.Inte
     
     await ctx.edit_initial_response(embed=embed)
 
+@logging_group.with_command
+@tanjun.with_channel_slash_option("log_channel","Which logging instance should this apply to? (DEFAULT: Current channel)", default=None, types=[hikari.GuildTextChannel])
+@tanjun.with_channel_slash_option("channel","Channel to ignore", types=[hikari.GuildTextChannel,hikari.GuildVoiceChannel,hikari.GuildStageChannel, hikari.GuildNewsChannel])
+@tanjun.as_slash_command("ignore","Select a channel to ignore when logging events")
+async def logging_ignore_command(ctx: SlashContext, channel: hikari.GuildChannel, log_channel: hikari.GuildTextChannel):
+    if log_channel is None:
+        log_channel = await ctx.fetch_channel()
+    
+     # Presence check of the proposed channel for a logging instance
+    instance = db.record("SELECT * FROM log_channel WHERE guild_id = ? AND channel_id = ?",str(ctx.guild_id),str(log_channel.id))
+    if instance is None:
+        raise CustomError("No logging instance found","This channel does not have a logging instance setup. Make sure to select a channel with a logging instance")
+
+    # Presence check of ignored channel
+    log_channel_id = instance[0]
+    db_ignore_channel = db.record("SELECT * FROM log_channel_ignore WHERE log_channel_id = ? AND channel_id = ?",log_channel_id, str(channel.id))
+    if db_ignore_channel is not None:
+        raise CustomError("Channel already ignored","This channel is already ignored")
+    
+    db.execute(
+        "INSERT INTO log_channel_ignore(log_channel_id,channel_id) VALUES (?,?)",
+        log_channel_id,
+        str(channel.id)
+    )
+    
+    embed = auto_embed(
+        type = "info",
+        author = COG_TYPE,
+        author_url = COG_LINK,
+        title = "Channel ignored",
+        description = f"<#{channel.id}>",
+        ctx=ctx
+    )
+    await ctx.respond(embed=embed)
+
+@logging_group.with_command
+@tanjun.with_channel_slash_option("log_channel","Which logging instance should this apply to? (DEFAULT: Current channel)", default=None, types=[hikari.GuildTextChannel])
+@tanjun.with_channel_slash_option("channel","Channel to unignore", types=[hikari.GuildTextChannel,hikari.GuildVoiceChannel,hikari.GuildStageChannel, hikari.GuildNewsChannel])
+@tanjun.as_slash_command("unignore","Select a channel to unignore when logging events")
+async def logging_unignore(ctx: SlashContext, channel: hikari.GuildChannel, log_channel: hikari.GuildTextChannel):
+    if log_channel is None:
+        log_channel = await ctx.fetch_channel()
+    
+     # Presence check of the proposed channel for a logging instance
+    instance = db.record("SELECT * FROM log_channel WHERE guild_id = ? AND channel_id = ?",str(ctx.guild_id),str(log_channel.id))
+    if instance is None:
+        raise CustomError("No logging instance found","This channel does not have a logging instance setup. Make sure to select a channel with a logging instance")
+
+    # Presence check of ignored channel
+    log_channel_id = instance[0]
+    db_ignore_channel = db.record("SELECT * FROM log_channel_ignore WHERE log_channel_id = ? AND channel_id = ?",log_channel_id, str(channel.id))
+    if db_ignore_channel is None:
+        raise CustomError("Channel already unignored","This channel is already unignored")
+    
+    db.execute(
+        "DELETE FROM log_channel_ignore WHERE log_channel_id = ? AND channel_id = ?",log_channel_id, str(channel.id)
+    )
+    
+    embed = auto_embed(
+        type = "info",
+        author = COG_TYPE,
+        author_url = COG_LINK,
+        title = "Channel unignored",
+        description = f"<#{channel.id}>",
+        ctx=ctx
+    )
+    await ctx.respond(embed=embed)
+
 @tanjun.as_loader
 def load_components(client: Client):
     client.add_component(logging_component.copy())
