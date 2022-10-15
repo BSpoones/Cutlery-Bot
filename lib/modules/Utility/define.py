@@ -5,14 +5,13 @@ Solely for use in the Cutlery Bot discord bot
 Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#Define
 """
 
-import logging
-import re
+import logging, re, tanjun, requests_async as requests
 from bs4 import BeautifulSoup
-import requests_async as requests
-import tanjun
 from tanjun.abc import Context as Context
-from lib.core.bot import Bot
+
 from lib.core.client import Client
+from lib.core.error_handling import CustomError
+from lib.utils.command_utils import auto_embed, log_command
 from . import COG_TYPE, COG_LINK
 
 async def get_definition(word):
@@ -21,7 +20,7 @@ async def get_definition(word):
     to use async
     """
     if len(word.split()) > 1:
-        raise ValueError("A Term must be only a single word")
+        raise CustomError("Invalid term","A Term must be only a single word")
     else:
         try:
             html = ("http://wordnetweb.princeton.edu/perl/webwn?s={0}".format(word))
@@ -51,7 +50,7 @@ define_component = tanjun.Component()
 @tanjun.as_slash_command("define","Gets the definition of a word")
 async def define_command(ctx: Context, word: str):
     await ctx.respond( # Wait message
-        embed = Bot.auto_embed(
+        embed = auto_embed(
             type="info",
             author=f"{COG_TYPE}", 
             author_url = COG_LINK,
@@ -71,7 +70,7 @@ async def define_command(ctx: Context, word: str):
             for chr in item[1][:3]: # Only using the first 3 definitions per word type
                 message +=f"- {chr.capitalize()} \n"
             fields.append((word_type,message,False))
-        embed = Bot.auto_embed(
+        embed = auto_embed(
             type="info",
             author=f"{COG_TYPE}",
             author_url = COG_LINK,
@@ -80,16 +79,14 @@ async def define_command(ctx: Context, word: str):
             ctx=ctx
         )
     if definition is None:
-        embed = Bot.auto_embed(
+        embed = auto_embed(
             type="error",
             title="**Word not found**",
             description="Cannot find that word, it may not exist in the dictionary but please check the spelling.",
             ctx=ctx
         )
     await ctx.edit_initial_response(embed=embed)
-    Bot.log_command(ctx,"define",word)
-
-
+    log_command(ctx,"define",word)
 
 @tanjun.as_loader
 def load_components(client: Client):
