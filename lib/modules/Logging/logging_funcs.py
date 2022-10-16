@@ -1008,6 +1008,10 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
         impossible to find let alone log the message change
         """
         return
+    if event.author_id == bot.get_me().id:
+        # Message edits from the bot will not be recorded
+        return
+    
     channel_id = event.channel_id
     message_id = event.message_id
     
