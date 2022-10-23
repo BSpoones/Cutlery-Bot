@@ -24,9 +24,12 @@ The Admin module consists of commands that directly affect the bot itself. These
 
 | Command | Args | Description |
 |---------|------|-------------|
-| Closebot| | Closes the bot (Owner only) |
-| RestartBot | | Restarts the bot (Owner only) |
-| SetActivity | (type) (activity) [link] [permanent] | Sets the activity for the bot |
+| archive channel | (channel) [bypass_last_archive] | Archives all messages in a channel |
+| archive all | [bypass_last_archive] | Archives all messages in all text channels in a guild|
+| Bot close | | Closes the bot |
+| Bot restart | | Restart the bot |
+| Bot info | | Displays info about the bot |
+| Bot SetActivity | (type) (activity) [link] [permanent] | Sets the activity for the bot |
 
 **AutoPurge**
 
@@ -34,7 +37,7 @@ The AutoPurge module is responsible for automatically purging messages sent earl
 
 | Command | Args | Description |
 |---------|------|-------------|
-| autopurge setup | (cutoff) [channel] [purge_pinned] [guild_wide] | Sets up an AutoPurge instance in a given channel or across an entire guild |
+| autopurge setup | (cutoff) [channel] [purge_pinned] [guild_wide] | Sets up an AutoPurge instance in a given channel |
 | autopurge cutoff | (cutoff) [channel] | Sets a new AutoPurge cutoff |
 | autopurge enable | [channel] | Enables AutoPurge |
 | autopurge disable | [channel] | Disables AutoPurge |
@@ -57,11 +60,12 @@ The Reminder module is responsible for reminding users at a requested time and f
 
 | Command | Args | Description |
 |---------|------|-------------|
-| RemindEvery |  (date) (time) (todo) [private] [target] | Sends a repeating reminder on a specific date and time. |
-| RemindIn | (when) (todo) [target] [private] | Sends a reminder to a target after a given amount of time (1y1m1d = 1 year, 1 month, and 1 day into the future). |
-| RemindOn | (date) (time) (todo) [private] [target] | Sends a reminder on a specific date and time. |
-| DeleteReminder | (id) | Deletes a reminder |
-| ShowReminders| [page] [amount] [serveronly] | Shows your own reminders |
+| remind every |  (date) (time) (todo) [private] [target] | Sends a repeating reminder on a specific date and time. |
+| remind in | (when) (todo) [target] [private] | Sends a reminder to a target after a given amount of time (1y1m1d = 1 year, 1 month, and 1 day into the future). |
+| remind at | (date) (time) (todo) [private] [target] | Sends a reminder on a specific date and time. |
+| remind per | (timeframe) (todo) [private] [target] | Sets a repeating reminder, to remind every timeframe. |
+| remind delete | (id) | Deletes a reminder |
+| remind list | [page] [amount] [serveronly] | Shows your own reminders |
 
 **Timetable**
 
@@ -123,4 +127,4 @@ Completed Features:
     - Calculation of a user's current lesson
     - `NF` Command based input of Groups, Teachers, Lessons, and Students
     - `NF` Command based removal of Groups, Teachers, Lessons, and Students
-    - `NF` Secure method to search through groups
+    - Secure method to search through groups
