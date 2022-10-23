@@ -138,7 +138,12 @@ class Timetable():
         start_datetime = datetime.datetime.strptime(start_time,HHMM_FORMAT)
         end_datetime = datetime.datetime.strptime(end_time,HHMM_FORMAT)
         lesson_duration = format_timespan((end_datetime-start_datetime).total_seconds())
-        lesson_start_timestamp = int(next_occourance_of_time(start_datetime.time()).timestamp())
+        current_time = datetime.datetime.today().strftime(HHMM_FORMAT)
+        current_time = datetime.datetime.strptime(current_time,HHMM_FORMAT)
+        if start_datetime == current_time:
+            lesson_start_timestamp = int((datetime.datetime.combine(datetime.datetime.today().date(),start_datetime.time())).timestamp())
+        else:
+            lesson_start_timestamp = int(next_occourance_of_time(start_datetime.time()).timestamp())
         
         # Room and/or link
         if school.lower() == "university of lincoln":
@@ -158,7 +163,7 @@ class Timetable():
         if all([x is not None for x in [teacher_info,subject_info]]): # Both teacher and subject info
             teacher_name: str = teacher_info[2]
             subject_name: str = subject_info[2]
-            lesson_title = f"{subject_name.capitalize()} {lesson_type} with {teacher_name.capitalize()}"
+            lesson_title = f"{subject_name} {lesson_type} with {teacher_name}"
             # Prioritising subject over teacher if subject is given
             colour = subject_info[3]
         elif all([x is None for x in [teacher_info,subject_info]]): # No teacher or subject info
@@ -167,15 +172,15 @@ class Timetable():
         elif subject_info is None: # Only teacher info is given
             # Only including Subject name + lesson_type
             teacher_name: str = teacher_info[2]
-            lesson_title = f"{lesson_type} with {teacher_name.capitalize()}"
+            lesson_title = f"{lesson_type.capitalize()} with {teacher_name}"
             colour = teacher_info[3]
         elif teacher_info is None: # Only subject info is given
             subject_name: str = subject_info[2]
-            lesson_title = f"{subject_name.capitalize()} {lesson_type}"
+            lesson_title = f"{subject_name} {lesson_type}"
             colour = subject_info[3]
             
         # Formatting colour
-        colour = hikari.Colour(int(f"0x{colour[7]}",16))
+        colour = hikari.Colour(int(f"0x{colour}",16))
         
         description = f"**{room_str}**\n> Start: `{start_datetime.strftime('%H:%M')}`\n> End: `{end_datetime.strftime('%H:%M')}`\n> Duration: `{lesson_duration}`"
         fields = [
@@ -202,7 +207,7 @@ class Timetable():
         lesson = args[0]
         alert_time = args[1]
         lesson_alert_times: list = args[2]
-        
+        print(lesson)
         # This countdown will only occur at lesson_start - alert_time.
         # Meaning a current datetime can be used instead of calculating
         # the current lesson
@@ -227,7 +232,8 @@ class Timetable():
                 
                 # Find the last alert time and check if that was in a lesson
                 last_alert_time = lesson_alert_times[alert_time_index-1]
-                time_of_last_alert = now - datetime.timedelta(minutes = (alert_time - last_alert_time))
+                time_of_last_alert = now - datetime.timedelta(minutes = (last_alert_time - alert_time))
+                print(alert_time, last_alert_time, time_of_last_alert)
                 if self.is_datetime_in_lesson(group_id, time_of_last_alert) is None:
                     # This means that the last countdown wasn't in a lesson, meaning an embed should have already sent
                     pass
@@ -243,7 +249,7 @@ class Timetable():
                 # If the time is in a lesson, but the lesson is starting, the embed MUST be shown
                 if len(lesson_alert_times) > 1: # Ensuring that 0 wasn't the only alert time
                     last_alert_time = lesson_alert_times[alert_time_index-1] # No index check is needed, 0 is always the last alert time and if the index isn't 0, then there's always an item before (It'll work trust me)
-                    time_of_last_alert = now - datetime.timedelta(minutes = (alert_time - last_alert_time))
+                    time_of_last_alert = now - datetime.timedelta(minutes = (last_alert_time - alert_time))
                     if self.is_datetime_in_lesson(group_id, time_of_last_alert) is None:
                         # If the last alert time wasn't in a lesson then an embed has already been sent
                         pass
@@ -255,7 +261,8 @@ class Timetable():
                     # There is only one alert, meaning it MUST be sent
                     await self.send_lesson_embed(lesson)
                     await asyncio.sleep(2) 
-                    
+            # If current time is in lesson and it's not the final alert time, do nothing
+            # a future alert time will do something    
                     
         # Only valid lesson countdowns will run beyond this point
         
@@ -282,16 +289,17 @@ class Timetable():
         # If the lesson is starting
         if alert_time == 0:
             await self.bot.rest.create_message(channel_id,final_output_msg,role_mentions=True, components = components)
-            asyncio.sleep(2) # Ensures current lesson isn't caught
+            await asyncio.sleep(2) # Ensures current lesson isn't caught
             await self.update_time_channels(group_id)
         else:
-            # Creating the time until message. delete_after is calculated by checking how long it is until the next countdown **should** be sent
-            # Shouldn't create an error when finding +1 th in a list as the last element is always 0 and is handled by the above statement.
-            delete_after = (lesson_alert_times[alert_time_index] - lesson_alert_times[alert_time_index+1])*60
-            message = await self.bot.rest.create_message(channel_id,f"<@&{ping_role_id}> your lesson is in `{format_timespan(alert_time*60)}`",role_mentions=True)
-            await asyncio.sleep(delete_after)
-            await message.delete()
-            # TODO: Figure out a way for this to work even on a bot restart
+            if self.is_datetime_in_lesson(group_id, now) is None:
+                # Creating the time until message. delete_after is calculated by checking how long it is until the next countdown **should** be sent
+                # Shouldn't create an error when finding +1 th in a list as the last element is always 0 and is handled by the above statement.
+                delete_after = (lesson_alert_times[alert_time_index] - lesson_alert_times[alert_time_index+1])*60
+                message = await self.bot.rest.create_message(channel_id,f"<@&{ping_role_id}> your lesson is in `{format_timespan(alert_time*60)}`",role_mentions=True)
+                await asyncio.sleep(delete_after)
+                await message.delete()
+                # TODO: Figure out a way for this to work even on a bot restart
     
     def get_week_start_datetimes(self,week_num_str: str, group_start_date: datetime.datetime) -> list[datetime.datetime | list[datetime.datetime]]:
         """
@@ -563,6 +571,8 @@ class Timetable():
         Takes a datetime and group/ tuple of groups and returns all lessons
         on that day
         """
+        if isinstance(group_ids, int) or isinstance(group_ids,str):
+            group_ids = [group_ids]
         group_ids = list(map(str,group_ids))
         current_day_of_week = current_datetime.weekday()
         weekly_timetable = self.get_week_timetable(group_ids, current_datetime)
@@ -635,7 +645,7 @@ class Timetable():
                 raise CustomError("No group found","Could not find that group.")
             
             # Getting all lessons
-            lessons: list[str] = db.records("SELECT * FROM lessons WHERE lesson_group_id = ?",group_id)
+            lessons: list[str] = db.records("SELECT * FROM lessons WHERE lesson_group_id = ? ORDER BY day_of_week ASC, start_time ASC",group_id)
             for lesson in lessons:
                 # Idea here is to get the week num ranges, if the week num is exactly week_num or
                 # the range contains the week num, then it's added to approved_lessons
@@ -718,6 +728,26 @@ class Timetable():
                 start_datetime = datetime.datetime.combine(current_datetime.date(),start_time_object)
                 return (day_timetable[0], start_datetime)
     
+    def get_current_lesson(self,group_ids):
+        if isinstance(group_ids, str):
+            group_ids = [group_ids]
+        
+        current_datetime = datetime.datetime.today()
+        current_time = int(current_datetime.strftime("%H%M"))
+        day_timetable = self.get_day_timetable(group_ids,current_datetime)
+        if day_timetable == []:
+            return None
+        else:
+            # Finding a lesson that has a start time before the current time and an end time
+            # after the current time
+            # NOTE: This approach handles only one lesson at a time.
+            for lesson in day_timetable:
+                start_time = int(lesson[6])
+                end_time = int(lesson[7])
+                if start_time <= current_time <= end_time:
+                    return lesson
+            return None # If it gets to the end of the for loop then it won't find a lesson
+        
     def get_non_holiday_lessons():
         """
         Takes a pre generated list of timetalbe info, and removes any lessons
@@ -735,6 +765,28 @@ class Timetable():
         
         group_ids = db.column("SELECT lesson_group_id FROM students WHERE user_id = ?",user_id)
         return group_ids
+    
+    def is_datetime_in_lesson(self,group_id, now):
+        now_time = int(now.strftime("%H%M"))
+        day_timetable = self.get_day_timetable(group_id,now)
+        print("A")
+        if day_timetable == []:
+            print("B")
+            return None
+        else:
+            # Finding a lesson that has a start time before the current time and an end time
+            # after the current time
+            # NOTE: This approach handles only one lesson at a time.
+            for lesson in day_timetable:
+                start_time = int(lesson[6])
+                end_time = int(lesson[7])
+                print(start_time,now_time,end_time)
+                print(start_time <= now_time <= end_time)
+                if start_time <= now_time <= end_time:
+                    print("C")
+                    return lesson
+            print("D")
+            return None # If it gets to the end of the for loop then it won't find a lesson
     
     def is_datetime_in_holiday(self,groupid,now):
         """
@@ -772,16 +824,7 @@ class Timetable():
         
         await self.bot.rest.edit_channel(nl_day_id,name=nl_day_str)
         await self.bot.rest.edit_channel(nl_time_id,name=nl_time_str)    
-    
-    def is_datetime_in_lesson(self, group_id,datetime):
-        """
-        Used for /currentlesson, It takes in a datetime object and group id and
-        checks if any lessons occur during that datetime. If it does, it will return a tuple
-        of all lessons (as there may be multiple) that occur during this datetime. If none are
-        found, it returns None
-        """
-        return None
-    
+        
     def get_assignments_for_datetime():
         """
         Retrieves all assignments that are due on a given
@@ -789,11 +832,20 @@ class Timetable():
         """
         pass
     
-    def is_image_link_valid():
-        pass
+    def is_image_link_valid(self, link: str) -> bool:
+        """
+        Validates a given link
+        """
+        if link is not None:
+            return validators.url(link)
     
-    def validate_hex_code():
-        pass
+    def validate_hex_code(self, hex_code) -> bool:
+        """
+        Uses regular expressions to validate a hex code
+        """
+        if hex is not None:
+            match = re.search(r'^(?:[0-9a-fA-F]{3}){1,2}$', hex)
+            return match
     
     def random_hex_colour(self):
         hex = "{:06x}".format(random.randint(0, 0xFFFFFF))
@@ -814,6 +866,7 @@ class Timetable():
             return False
         moderator = bool(student[5])
         return moderator
+    
     def is_student_owner(self, lesson_group_id, user_id):
         if int(user_id) in OWNER_IDS:
             return True
