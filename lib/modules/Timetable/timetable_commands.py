@@ -204,8 +204,12 @@ def build_schedule_page(ctx: SlashContext, group_ids: tuple[str], lesson_datetim
         reminders_on_day = reminders_on_weekday + reminders_on_datetime
     else: # Reminders can't be set for groups hence this is empty
         reminders_on_day = []
+    
+    if lesson_datetime.year != datetime.datetime.today().year:
+        title = f"Schedule for {lesson_datetime.date().strftime('%A, %d. %B %Y')}"
+    else:
+        title = f"Schedule for {lesson_datetime.date().strftime('%A, %d. %B')}"
         
-    title = f"Schedule for {lesson_datetime.date().strftime('%A, %d. %B')}"
     description = ""
     # if len(AssignmentsOnDay) > 0:
     #     AssignmentStr = []
@@ -266,7 +270,9 @@ def build_schedule_page(ctx: SlashContext, group_ids: tuple[str], lesson_datetim
         day_duration = (day_end_time-day_start_time).total_seconds()
         total_break_time = day_duration-total_lesson_time
         total_break_time_str = format_timespan(total_break_time)
-        description += f"\nTotal lesson time: `{total_lesson_time_str}`\nTotal break time: `{total_break_time_str}`"
+        description += f"\nTotal lesson time: `{total_lesson_time_str}`"
+        if total_break_time > 0:
+            description +=f"\nTotal break time: `{total_break_time_str}`"
     
     if lessons_for_day == []:
         fields.append(
@@ -304,7 +310,7 @@ async def schedule_command(
     group: str = None,
     bot: hikari.GatewayBot = tanjun.injected(type=hikari.GatewayBotAware)
     ):
-    
+    # Parsing day
     if day is not None:
         if day.lower() == "tomorrow":
             lesson_datetime = datetime.datetime.today() + datetime.timedelta(days=1)
@@ -317,7 +323,7 @@ async def schedule_command(
             lesson_datetime = current_datetime + datetime.timedelta(days=delta)
     else:
         lesson_datetime = datetime.datetime.today()
-    
+    # Parsing group
     if group is None:
         user_group = True
         group_ids = CB_TIMETABLE.get_group_ids_from_user(ctx.author.id)
@@ -328,11 +334,12 @@ async def schedule_command(
         group_ids = db.column("SELECT * FROM lesson_groups WHERE group_name = ?",group)
         if group_ids is None:
             raise CustomError("Group not found","Could not find that group in this server, please check your spelling")
-        
+    # Building page
     embed = build_schedule_page(ctx, group_ids, lesson_datetime, user_group)
     await ctx.create_initial_response(embed=embed, components=[PAGENATE_ROW])
     message = await ctx.fetch_initial_response()
     log_command(ctx,"schedule")
+    
     try:
         with bot.stream(InteractionCreateEvent, timeout=INTERACTION_TIMEOUT).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
             async for event in stream:
@@ -342,14 +349,12 @@ async def schedule_command(
                 key = event.interaction.custom_id
                 match key:
                     case "FIRST":
-                        print("FIRST")
                         lesson_datetime = lesson_datetime - datetime.timedelta(days=7)
                         await ctx.edit_initial_response(embed=build_schedule_page(ctx, group_ids, lesson_datetime, user_group),components=[PAGENATE_ROW,])
                     case "BACK":
                         lesson_datetime = lesson_datetime - datetime.timedelta(days=1)
                         await ctx.edit_initial_response(embed=build_schedule_page(ctx, group_ids, lesson_datetime, user_group),components=[PAGENATE_ROW,])
                     case "NEXT":
-                        print("NEXT")
                         lesson_datetime = lesson_datetime + datetime.timedelta(days=1)
                         await ctx.edit_initial_response(embed=build_schedule_page(ctx, group_ids, lesson_datetime, user_group),components=[PAGENATE_ROW,])
                     case "LAST":
@@ -359,15 +364,14 @@ async def schedule_command(
                     case "AUTHOR_DELETE_BUTTON":
                         await ctx.delete_initial_response()
         await ctx.edit_initial_response(components=[EMPTY_ROW])
-        
-
     except:
         pass
 
 @timetable_component.add_slash_command
 @tanjun.with_str_slash_option("group","A group name or group code to search for", default=None)
-@tanjun.as_slash_command("nextlesson","Gets the nextlesson for you or a lesson group")
+@tanjun.as_slash_command("nextlesson","Gets the next lesson for you or a lesson group")
 async def nextlesson_command(ctx: SlashContext, group: str = None):
+    # Parsing group
     if group is None:
         group_ids = CB_TIMETABLE.get_group_ids_from_user(ctx.author.id)
         if group_ids is None:
@@ -377,15 +381,19 @@ async def nextlesson_command(ctx: SlashContext, group: str = None):
         if group_ids is None:
             raise CustomError("Group not found","Could not find that group in this server, please check your spelling")
     
+    # Generating next lesson
     next_lesson, next_lesson_datetime = CB_TIMETABLE.get_next_lesson(group_ids)
+    # Parsing datetimes
     start_time = datetime.datetime.combine(next_lesson_datetime.date(),datetime.datetime.strptime(next_lesson[6],HHMM_FORMAT).time())
     end_time = datetime.datetime.combine(next_lesson_datetime.date(),datetime.datetime.strptime(next_lesson[7],HHMM_FORMAT).time())
     start_timetsamp = get_timestamp(start_time)
     end_timestamp = get_timestamp(end_time)
-
+    
+    # Formatting lesson duration
     lesson_duration = (end_time - start_time).total_seconds()
     lesson_duration_str = format_timespan(lesson_duration)
     
+    # Teacher and room info
     room = next_lesson[8]
     subject_id = next_lesson[2]
     teacher_id = next_lesson[3]
@@ -395,7 +403,7 @@ async def nextlesson_command(ctx: SlashContext, group: str = None):
     
     group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?",next_lesson[1])
     school: str = group_info[15]
-    
+    thumbnail = group_info[13]
     room: str = next_lesson[8]
     # Room and/or link
     if school.lower() == "university of lincoln":
@@ -406,10 +414,13 @@ async def nextlesson_command(ctx: SlashContext, group: str = None):
             room_str = "Online"
     else:
         room_str = f"In {room}"
+    
+    # Subject info
     if subject_info is not None:
         subject_str = f"> Subject: `{subject_info[2]}`\n"
     else:
         subject_str = ""
+    
     title = f"Next lesson"
     
     description = f"{subject_str}> Teacher: `{teacher_name}`\n> Time: <t:{start_timetsamp}:t> - <t:{end_timestamp}:t> `({lesson_duration_str})`\n> Room: {room_str}"
@@ -424,7 +435,6 @@ async def nextlesson_command(ctx: SlashContext, group: str = None):
             False
         )
     ]
-    thumbnail = group_info[13]
     
     embed = auto_embed(
         type = "info",
@@ -437,12 +447,95 @@ async def nextlesson_command(ctx: SlashContext, group: str = None):
         ctx = ctx
     )
     await ctx.respond(embed=embed)
+    
+    # Updating all required channels
     for group_id in group_ids:
         await CB_TIMETABLE.update_time_channels(group_id)
     
     log_command(ctx,"nextlesson")
 
-
+@timetable_component.add_slash_command
+@tanjun.with_str_slash_option("group","A group name or group code to search for", default=None)
+@tanjun.as_slash_command("currentlesson","Gets the current lesson for you or a lesson group")
+async def currentlesson_command(ctx: SlashContext, group: str = None):
+    # Parsing group
+    if group is None:
+        group_ids = CB_TIMETABLE.get_group_ids_from_user(ctx.author.id)
+        if group_ids is None:
+            raise CustomError("No group found","You do not appear to be a student in any group.")
+    else:
+        group_ids = db.column("SELECT * FROM lesson_groups WHERE group_name = ?",group)
+        if group_ids is None:
+            raise CustomError("Group not found","Could not find that group in this server, please check your spelling")
+    
+    # Generating next lesson
+    current_lesson = CB_TIMETABLE.get_current_lesson(group_ids)
+    if current_lesson is None:
+        raise CustomError("Not in lesson","You are not currently in a lesson. Use `/nextlesson` to find your next lesson")
+    current_date = datetime.datetime.today().date()
+    # Parsing datetimes
+    start_time = datetime.datetime.combine(current_date,datetime.datetime.strptime(current_lesson[6],HHMM_FORMAT).time())
+    end_time = datetime.datetime.combine(current_date,datetime.datetime.strptime(current_lesson[7],HHMM_FORMAT).time())
+    start_timetsamp = get_timestamp(start_time)
+    end_timestamp = get_timestamp(end_time)
+    
+    # Formatting lesson duration
+    lesson_duration = (end_time - start_time).total_seconds()
+    lesson_duration_str = format_timespan(lesson_duration)
+    
+    # Teacher and room info
+    room = current_lesson[8]
+    subject_id = current_lesson[2]
+    teacher_id = current_lesson[3]
+    teacher_info = db.record("SELECT * FROM teachers WHERE teacher_id = ?", teacher_id)
+    subject_info = db.record("SELECT * FROM subjects WHERE subject_id = ?", subject_id)
+    teacher_name = teacher_info[2]
+    
+    group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?",current_lesson[1])
+    school: str = group_info[15]
+    thumbnail = group_info[13]
+    room: str = current_lesson[8]
+    # Room and/or link
+    if school.lower() == "university of lincoln":
+        if room.lower() != "online":
+            room_link = f"https://navigateme.lincoln.ac.uk/?type=s&end=r_{room[:-3]}_{room[-3:]}"
+            room_str = f"[{room}]({room_link})"
+        else:
+            room_str = "Online"
+    else:
+        room_str = f"In {room}"
+    
+    # Subject info
+    if subject_info is not None:
+        subject_str = f"> Subject: `{subject_info[2]}`\n"
+    else:
+        subject_str = ""
+    
+    title = f"Current lesson"
+    
+    description = f"{subject_str}> Teacher: `{teacher_name}`\n> Time: <t:{start_timetsamp}:t> - <t:{end_timestamp}:t> `({lesson_duration_str})`\n> Room: {room_str}"
+    end_time_str = f"<t:{end_timestamp}:t>"
+    fields = [
+        (
+            "This lesson finishes at at",
+            f"{end_time_str} :clock1: <t:{end_timestamp}:R>",
+            False
+        )
+    ]
+    
+    embed = auto_embed(
+        type = "info",
+        author = COG_TYPE,
+        author_url = COG_LINK,
+        title = title,
+        description = description,
+        fields = fields,
+        thumbnail = thumbnail if thumbnail else None,
+        ctx = ctx
+    )
+    await ctx.respond(embed=embed)
+    log_command(ctx,"current_lesson")
+    
 @tanjun.as_loader
 def load_components(client: Client):
     client.add_component(timetable_component.copy())
