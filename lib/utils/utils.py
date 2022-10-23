@@ -298,7 +298,9 @@ async def add_channel_to_db(channel: hikari.GuildTextChannel | hikari.GuildVoice
     if type == "GUILD_CATEGORY": # Categories aren't going to be stored in here
         return
     name = str(channel.name)
-    parent_id = str(channel.parent_id)
+    parent_id = channel.parent_id
+    if parent_id is None:
+        parent_id = 0
     position = channel.position
     
     # TODO: Add permission support
