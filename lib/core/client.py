@@ -1,3 +1,8 @@
+"""
+Client.py
+Developed by BSpoones - Nov 2021
+"""
+
 from pathlib import Path
 import tanjun, logging
 
