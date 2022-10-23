@@ -86,7 +86,7 @@ async def urbandictionary(ctx: Context,word: str):
         fields = []
         for i,item in enumerate(definition):
             field_value = f"**Definition**:\n> {item[0]}\n\n**Example:**\n> {item[1]}\n** **"
-            up_and_down_votes = f"\n<:upvote:846117123871998036> {int(item[2]):,}\t<:downvote:846117121854537818> {int(item[3]):,}"
+            up_and_down_votes = f"\n<:upvote:846117123871998036> `{int(item[2]):,}`\t<:downvote:846117121854537818> `{int(item[3]):,}`"
             if i == 0:
                 fields.append(("Top definition " + up_and_down_votes,field_value,False))
             else:
