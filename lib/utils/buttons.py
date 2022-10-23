@@ -50,6 +50,10 @@ PAGENATE_ROW = (
     .add_button(ButtonStyle.PRIMARY, "BACK")
     .set_emoji("◀")
     .add_to_container()
+    
+    .add_button(ButtonStyle.DANGER, DELETE_CUSTOM_ID)
+    .set_emoji("❌")
+    .add_to_container()
 
     .add_button(ButtonStyle.PRIMARY, "NEXT")
     .set_emoji("▶")
@@ -59,10 +63,7 @@ PAGENATE_ROW = (
     .set_emoji("⏭")
     .add_to_container()
     
-    .add_button(ButtonStyle.DANGER, DELETE_CUSTOM_ID)
-    .set_emoji("❌")
-    .add_to_container()
-
+    
 )
 
 TIMELINE_ROW = (
