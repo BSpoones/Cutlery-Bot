@@ -5,7 +5,6 @@ For use in Cutlery Bot and TheKBot2
 Documentation: https://www.bspoones.com/Cutlery-Bot/Reminder
 """
 import logging, math, tanjun, hikari, datetime
-from turtle import color
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
