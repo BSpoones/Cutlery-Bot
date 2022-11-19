@@ -10,3 +10,5 @@ pillow
 validators
 bs4
 qrcode
+mcstatus
+lxml
