@@ -10,19 +10,18 @@ from tanjun.abc import Context as Context
 
 from lib.core.client import Client
 from lib.core.error_handling import CustomError
-from lib.utils.command_utils import log_command
+from lib.utils.command_utils import log_command, permission_check
 from lib.utils.utils import convert_message_to_dict
-
 purge_component = tanjun.Component()
 
 @purge_component.add_slash_command
-@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_MESSAGES)
 @tanjun.with_str_slash_option("message","Enter a message ID / message link to purge up to", default = None)
 @tanjun.with_str_slash_option("regex_filter","Purge all messages in the limit that match a filter", default = None)
 @tanjun.with_bool_slash_option("purge_pinned","Choose to purge pinned messages - DEFAULT = FALSE",default = False)
 @tanjun.with_int_slash_option("limit","Number of messages to purge", default = 1)
 @tanjun.as_slash_command("purge","Purges x messages in chat", default_to_ephemeral=True)
 async def purge_command(ctx: Context, limit, purge_pinned, regex_filter, message: str):
+    permission_check(ctx, hikari.Permissions.MANAGE_MESSAGES)
     # Permission checks are already set in the command declaration
     if message is None:
         messages = await ctx.rest.fetch_messages(ctx.channel_id).limit(limit)

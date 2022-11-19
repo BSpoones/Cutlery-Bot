@@ -2,8 +2,9 @@
 import hikari, tanjun, logging, datetime
 from tanjun.abc import Context as Context
 
-from data.bot.data import RED,GREEN,BLUE,AMBER,DARK_RED,DARK_GREEN, DEAFULT_COLOUR
+from data.bot.data import RED,GREEN,BLUE,AMBER,DARK_RED,DARK_GREEN, DEAFULT_COLOUR, OWNER_IDS
 from lib.db import db
+from lib.core.error_handling import CustomError
 
 def get_colour_from_ctx(ctx: tanjun.abc.Context):
     return (ctx.member.get_top_role().color)
@@ -162,3 +163,33 @@ def log_command(*args):
         db.commit()
     except Exception as e:
         logging.critical(f"Failed to log command: {e}")
+        
+def permission_check(ctx: Context, permissions: list[hikari.Permissions] or hikari.Permissions):
+    # Converting single permission to list
+    if not isinstance(permissions,list):
+        permissions = [permissions]
+        
+    # Converting permissions to strings
+    permissions = [x.name for x in permissions]
+        
+    # Gathering user permissions
+    member = ctx.member
+    guild = ctx.get_guild()
+    channel = ctx.get_channel()
+    
+    if int(ctx.author.id) in OWNER_IDS: # Bot owners can do everything
+        return True
+    
+    perms = tanjun.utilities.calculate_permissions(
+            member = member,
+            guild = guild,
+            roles = {r.id: r for r in member.get_roles()},
+            channel = guild.get_channel(channel.id)
+        )
+    user_permissions = (str(perms).split("|"))
+    
+    # Checking if any of the permissions are NOT in user_permissions
+    for permission in permissions:
+        if permission not in user_permissions:
+            raise CustomError("Invalid Permission",f"You require the permission `{permission}`. Please contact an administrator if you think this is an error.")
+    return True

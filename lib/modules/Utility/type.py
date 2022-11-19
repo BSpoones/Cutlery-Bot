@@ -10,6 +10,7 @@ from tanjun.abc import Context as Context
 from tanjun.abc import SlashContext as SlashContext
 
 from lib.core.client import Client
+from data.bot.data import OWNER_IDS
 from lib.utils.command_utils import log_command
 
 type_component = tanjun.Component()
@@ -31,7 +32,7 @@ async def type_command(ctx: SlashContext, message: str, private: bool, channel: 
         )
         permissions = (str(perms).split("|"))
         
-        if "SEND_MESSAGES" not in permissions: # If a user can't send a message in a channel, then the bot shouldn't on their behalf
+        if ("SEND_MESSAGES" not in permissions) and (int(ctx.author.id) not in OWNER_IDS): # If a user can't send a message in a channel, then the bot shouldn't on their behalf
             raise PermissionError("You do not have permissions to send messages in this channel")
         
     if private:

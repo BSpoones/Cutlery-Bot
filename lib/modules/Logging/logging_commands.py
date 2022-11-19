@@ -14,7 +14,7 @@ from data.bot.data import EVENT_TYPES
 from lib.core.error_handling import CustomError
 from lib.db import db
 from lib.modules.Logging import COG_LINK, COG_TYPE
-from lib.utils.command_utils import auto_embed, log_command
+from lib.utils.command_utils import auto_embed, log_command, permission_check
 
 logging_component = tanjun.Component()
 logging_group = logging_component.with_slash_command(tanjun.slash_command_group("logging","Logging module"))
@@ -77,11 +77,11 @@ EVENT_PRESETS = {
 }
 
 @logging_group.with_command
-@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
 @tanjun.with_str_slash_option("preset","Choose to log a preset of choices", choices=LOG_PRESETS.keys())
 @tanjun.with_channel_slash_option("channel","Select an output channel",default= None)
 @tanjun.as_slash_command("setup","Sets up a logging instance to a channel")
 async def logging_setup_command(ctx: SlashContext, preset: str, channel: hikari.InteractionChannel = None):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD)
     # Gets current channel if none is given
     if channel is None:
         channel = await ctx.fetch_channel()
@@ -119,11 +119,11 @@ async def logging_setup_command(ctx: SlashContext, preset: str, channel: hikari.
     await ctx.edit_initial_response(embed=embed)
 
 @logging_group.with_command
-@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
 @tanjun.with_str_slash_option("preset","Choose to log a preset of choices", choices=EVENT_PRESETS.keys())
 @tanjun.with_channel_slash_option("channel","Select the logging channel",default= None)
 @tanjun.as_slash_command("add","Adds an event group to log in a logging instance")
-async def logging_add_command(ctx: SlashContext, preset: str, channel: hikari.InteractionChannel = None):  
+async def logging_add_command(ctx: SlashContext, preset: str, channel: hikari.InteractionChannel = None):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD)
     # Gets the current channel if none is given
     if channel is None:
         channel = await ctx.fetch_channel()
@@ -173,10 +173,10 @@ async def logging_add_command(ctx: SlashContext, preset: str, channel: hikari.In
     await ctx.edit_initial_response(embed=embed)
 
 @logging_group.with_command
-@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
 @tanjun.with_channel_slash_option("channel","Select a channel to send the message in",default= None)
 @tanjun.as_slash_command("delete","Deletes a logging instance")
 async def logging_delete_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD)
     if channel is None:
         channel = await ctx.fetch_channel()
     
@@ -203,11 +203,11 @@ async def logging_delete_command(ctx: SlashContext, channel: hikari.InteractionC
     await ctx.edit_initial_response(embed=embed)
 
 @logging_group.with_command
-@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
 @tanjun.with_str_slash_option("preset","Choose to remove a preset of choices", choices=EVENT_PRESETS.keys())
 @tanjun.with_channel_slash_option("channel","Select a channel",default= None)
 @tanjun.as_slash_command("remove","Removes an event group to log in a logging instance")
-async def logging_remove_command(ctx: SlashContext, preset, channel: hikari.InteractionChannel = None):  
+async def logging_remove_command(ctx: SlashContext, preset, channel: hikari.InteractionChannel = None):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD)
     if channel is None:
         channel = await ctx.fetch_channel()
 
@@ -254,6 +254,7 @@ async def logging_remove_command(ctx: SlashContext, preset, channel: hikari.Inte
 @tanjun.with_channel_slash_option("channel","Channel to ignore", types=[hikari.GuildTextChannel,hikari.GuildVoiceChannel,hikari.GuildStageChannel, hikari.GuildNewsChannel])
 @tanjun.as_slash_command("ignore","Select a channel to ignore when logging events")
 async def logging_ignore_command(ctx: SlashContext, channel: hikari.GuildChannel, log_channel: hikari.GuildTextChannel):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD)
     if log_channel is None:
         log_channel = await ctx.fetch_channel()
     
@@ -289,6 +290,7 @@ async def logging_ignore_command(ctx: SlashContext, channel: hikari.GuildChannel
 @tanjun.with_channel_slash_option("channel","Channel to unignore", types=[hikari.GuildTextChannel,hikari.GuildVoiceChannel,hikari.GuildStageChannel, hikari.GuildNewsChannel])
 @tanjun.as_slash_command("unignore","Select a channel to unignore when logging events")
 async def logging_unignore(ctx: SlashContext, channel: hikari.GuildChannel, log_channel: hikari.GuildTextChannel):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD)
     if log_channel is None:
         log_channel = await ctx.fetch_channel()
     

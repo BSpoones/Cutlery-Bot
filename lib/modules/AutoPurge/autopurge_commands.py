@@ -14,8 +14,7 @@ from lib.core.error_handling import CustomError
 from lib.modules.AutoPurge import CB_AUTOPURGE, COG_LINK, COG_TYPE
 from lib.modules.Logging.logging_funcs import CHANGE_ARROW
 from lib.utils.utils import parse_timeframe_from_string
-from lib.utils.command_utils import auto_embed, log_command
-
+from lib.utils.command_utils import auto_embed, log_command, permission_check
 from ...db import db
 
 autopurge_component = tanjun.Component()
@@ -23,20 +22,19 @@ autopurge_component = tanjun.Component()
 autopurge_group = autopurge_component.with_slash_command(tanjun.slash_command_group("autopurge","AutoPurge module"))
 
 @autopurge_group.with_command
-@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
-@tanjun.with_bool_slash_option("ignore_pinned","Choose to purge pinned messages or keep them (Default = False (keep pinned messages))", default=False)
+@tanjun.with_bool_slash_option("purge_pinned","Choose to purge pinned messages or keep them (Default = False (keep pinned messages))", default=False)
 @tanjun.with_channel_slash_option("channel","Select a channel to setup an AutoPurge instance (Default = This channel)",types = [hikari.GuildTextChannel],default= None)
 @tanjun.with_str_slash_option("cutoff","Messages before this timeframe will be purged")
 @tanjun.as_slash_command("setup","Sets up AutoPurge")
-async def autopurge_setup_command(ctx: SlashContext, cutoff, channel: hikari.InteractionChannel = None, ignore_pinned: bool = False):
+async def autopurge_setup_command(ctx: SlashContext, cutoff, purge_pinned: bool, channel: hikari.InteractionChannel = None):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD)
     cutoff_seconds = (parse_timeframe_from_string(cutoff))
-    if cutoff_seconds < 60 or cutoff_seconds > 1209595:
+    if cutoff_seconds < 60 or cutoff_seconds > 1209595: # Time limits as listed below
         raise CustomError("Invalid Cutoff","Cutoff must range from `1 minute` to `13 days 59 mins 55 seconds`")
     
     if channel is None:
         channel = await ctx.fetch_channel()
         
-    
     await ctx.defer()
     message = await ctx.fetch_initial_response()
     # Presence check
@@ -51,7 +49,7 @@ async def autopurge_setup_command(ctx: SlashContext, cutoff, channel: hikari.Int
         str(ctx.guild_id),
         str(ctx.channel_id),
         cutoff_seconds,
-        int(ignore_pinned),
+        int(purge_pinned),
         str(message.id),
         int(True)
         )
@@ -71,17 +69,17 @@ async def autopurge_setup_command(ctx: SlashContext, cutoff, channel: hikari.Int
     await ctx.edit_initial_response(embed=embed)
     log_command(ctx, "autopurge setup",str(channel.id),str(cutoff))
     # Pinning the output message
-    if not ignore_pinned: # No point pinning it if autopurge ignores pins
+    if not purge_pinned: # No point pinning it if autopurge ignores pins
         try:
             await ctx.rest.pin_message(ctx.channel_id,message.id)
         except hikari.BadRequestError:
             pass
 
 @autopurge_group.with_command
-@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
 @tanjun.with_channel_slash_option("channel","Select a channel to remove AutoPurge (Default = This channel)",types = [hikari.GuildTextChannel], default= None)
 @tanjun.as_slash_command("remove","Removes an AutoPurge instance")
 async def autopurge_remove_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD)
     if channel is None:
         channel = await ctx.fetch_channel()
 
@@ -125,11 +123,11 @@ async def autopurge_remove_command(ctx: SlashContext, channel: hikari.Interactio
             pass
 
 @autopurge_group.with_command
-@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
 @tanjun.with_channel_slash_option("channel","Select a channel to enable AutoPurge in (Default = This channel)",types = [hikari.GuildTextChannel], default= None)
 @tanjun.with_str_slash_option("cutoff","Messages before this timeframe will be purged")
 @tanjun.as_slash_command("cutoff","Edit the AutoPurge cutoff for a given channel")
 async def autopurge_cutoff_command(ctx: SlashContext, cutoff: str, channel: hikari.InteractionChannel = None):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD)
     cutoff_seconds = (parse_timeframe_from_string(cutoff))
     if cutoff_seconds < 60 or cutoff_seconds > 1209595:
         raise CustomError("Invalid Cutoff","Cutoff must range from `1 minute` to `13 days 59 mins 55 seconds`")
@@ -184,10 +182,10 @@ async def autopurge_cutoff_command(ctx: SlashContext, cutoff: str, channel: hika
             pass
 
 @autopurge_group.with_command
-@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
 @tanjun.with_channel_slash_option("channel","Select a channel to enable AutoPurge in (Default = This channel)",types = [hikari.GuildTextChannel],default= None)
 @tanjun.as_slash_command("enable","Enables AutoPurge")
-async def autopurge_enable_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):    
+async def autopurge_enable_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD) 
     if channel is None:
         channel = await ctx.fetch_channel()
     
@@ -241,10 +239,10 @@ async def autopurge_enable_command(ctx: SlashContext, channel: hikari.Interactio
             pass
 
 @autopurge_group.with_command
-@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
 @tanjun.with_channel_slash_option("channel","Select a channel to disable AutoPurge in (Default = This channel)",types = [hikari.GuildTextChannel],default= None)
 @tanjun.as_slash_command("disable","Disables AutoPurge")
 async def autopurge_disable_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD)
     if channel is None:
         channel = await ctx.fetch_channel()
 
@@ -296,10 +294,10 @@ async def autopurge_disable_command(ctx: SlashContext, channel: hikari.Interacti
             pass
 
 @autopurge_group.with_command
-@tanjun.with_author_permission_check(hikari.Permissions.MANAGE_GUILD)
 @tanjun.with_channel_slash_option("channel","Select a channel to view the AutoPurge status in (Default = This channel)",types = [hikari.GuildTextChannel],default= None)
 @tanjun.as_slash_command("status","View the AutoPurge cutoff for a given channel")
 async def autopurge_status_command(ctx: SlashContext, channel: hikari.InteractionChannel = None):
+    permission_check(ctx, hikari.Permissions.MANAGE_GUILD)
     if channel is None:
         channel = await ctx.fetch_channel()
 

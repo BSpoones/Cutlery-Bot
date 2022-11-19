@@ -11,7 +11,7 @@ from lib.utils.buttons import EMPTY_ROW, PAGENATE_ROW, TIMELINE_ROW
 from lib.utils.utils import get_timestamp
 from ...db import db
 from humanfriendly import format_timespan
-from lib.utils.command_utils import auto_embed, log_command
+from lib.utils.command_utils import auto_embed, log_command, permission_check
 from lib.modules.Timetable import CB_TIMETABLE, COG_LINK, COG_TYPE, DAYS_OF_WEEK
 
 timetable_component = tanjun.Component()
@@ -19,7 +19,6 @@ timetable_component = tanjun.Component()
 group_group = timetable_component.with_slash_command(tanjun.slash_command_group("group","Group based commands"))
 
 @group_group.with_command
-@tanjun.with_author_permission_check(hikari.Permissions.ADMINISTRATOR)
 @tanjun.with_str_slash_option("alert_times","Alert times for the group: Comma (,) seperated minutes", default=None)
 @tanjun.with_str_slash_option("image_link","Enter an image link", default=None)
 @tanjun.with_str_slash_option("start_date","When did your year start? YYYY-DD-MM format")
@@ -36,6 +35,7 @@ async def group_import_command(
     alert_times: str = None,
     group_code: str = None
     ):
+    permission_check(ctx, hikari.Permissions.ADMINISTRATOR)
     await ctx.defer()
     if timetable_csv.extension != "csv":
         raise CustomError("Only a .csv file is accepted")
