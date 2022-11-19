@@ -1,19 +1,19 @@
 """
 /bot commands
-Developed by Bspoones - Aug 2022
+Developed by Bspoones - Aug 2022, Nov 2022
 Based off commands in Cutlery Bot https://www.bspoones.com/Cutlery-Bot/
 """
 
 import tanjun, hikari, time, platform, os
 from humanfriendly import format_timespan
-from psutil import Process, cpu_freq, virtual_memory
+from psutil import Process, virtual_memory
 from platform import python_version
 from hikari import __version__ as hikari_version
 from hikari.messages import ButtonStyle
 from tanjun import __version__ as tanjun_version
 from tanjun.abc import Context as Context
 
-from data.bot.data import OWNER_IDS, VERSION
+from data.bot.data import OWNER_IDS, VERSION as BOT_VERSION
 from lib.core.error_handling import CustomError
 from lib.core.client import Client
 from lib.db import db
@@ -118,7 +118,7 @@ async def info_command(ctx: Context):
             
     
     commands_count = db.count("SELECT COUNT(command) FROM command_logs") + 1 # Adding one since this is also a command sent
-    
+    most_common_command, most_common_command_occurance = db.record("SELECT command, COUNT(command) AS `value_occurrence` FROM command_logs GROUP BY command ORDER BY `value_occurrence` DESC LIMIT 1;")
     # Calculating unique users
     members_set = set()
     members_list = (ctx.cache.get_members_view().values())
@@ -127,50 +127,44 @@ async def info_command(ctx: Context):
             members_set.add(id)
     member_count = len(members_set) # Unique users  
     
-    fields = [
-        ("Developer <a:spoongif:732758190734835775>","<@724351142158401577>",False),
-        ("Cutlery Bot version",VERSION, True),
-        ("Python version",python_version(),True),
-        ("Library",f"hikari-py v{hikari_version}",True),
-        ("Command handler",f"hikari-tanjun v{tanjun_version}",True),
-        ("Uptime",uptime,True),
-        ("Ping",f"{ping:,.0f} ms",True),
-        (
-            "Memory usage",
-            f"{mem_usage:,.2f} MiB ({mem_of_total:.2f}%)",
-             True
-        ),
-        ("CPU speed",f"{(cpu_freq().max):.0f} MHz",True),
-        (
-            "Users",
-            f"{member_count:,}",
-            True
-        ),
-        (
-            "Total server channels",
-            f"{len(ctx.cache.get_guild_channels_view()):,}",
-            True
-        ),
-        (
-            "Guilds",
-            f"{len(ctx.cache.get_available_guilds_view()):,}",
-            True
-        ),
-        (
-            "OS",
-            f"{platform.system()} {platform.release()}", 
-            False
-        )
+    
+    description = ""
+    
+    description_list = [
+        f"**Developer Info:**",
+        f"> Owner & Developer: [BSpoones](https://www.bspoones.com/) <a:spoongif:732758190734835775>",
+        f"> Lines of code: `{total_lines:,}` in `{total_files:,}` files.",
+        f"",
+        f"**Command Info:**",
+        f"> Commands sent: `{commands_count:,}`",
+        f"> Most popular: `/{most_common_command}` - {most_common_command_occurance:,} uses",
+        f"",
+        f"**Version Info:**",
+        f"> Cutlery Bot: `{BOT_VERSION}`",
+        f"> Python: `{python_version()}`",
+        f"> Hikari: `{hikari_version}`",
+        f"> Hikari-Tanjun: `{tanjun_version}`",
+        f"",
+        f"**Hosting Info:**",
+        f"> Uptime: `{uptime}`",
+        f"> Ping: `{ping:,.0f} ms`",
+        f"> Memory usage: `{mem_usage:,.2f} MiB ({mem_of_total:.2f}%)`",
+        f"> OS: `{platform.system()}`",
+        f"",
+        f"**Discord Info:**",
+        f"> Users: `{member_count:,}`",
+        f"> Channels: `{len(ctx.cache.get_guild_channels_view()):,}`",
+        f"> Servers: `{len(ctx.cache.get_available_guilds_view()):,}`"
     ]
+    description = "\n".join(description_list)
     
     embed = auto_embed(
         type = "info",
         author = COG_TYPE,
         author_url = COG_LINK,
         title ="Cutlery Bot info",
-        description = f"`{total_lines:,}` lines of code in `{total_files:,}` files.\nTotal commands sent to the bot: `{commands_count:,}`",
+        description = description,
         thumbnail = bot.avatar_url,
-        fields = fields,
         ctx = ctx
     )
 
@@ -181,7 +175,7 @@ async def info_command(ctx: Context):
         .add_to_container()
         
         .add_button(ButtonStyle.LINK, "https://github.com/BSpoones/Cutlery-Bot")
-        .set_label("Source")
+        .set_label("GitHub")
         .add_to_container()
         
         .add_button(
@@ -193,7 +187,7 @@ async def info_command(ctx: Context):
     )
     await ctx.respond(embed=embed, components=[button])
     
-    log_command(ctx,"info")
+    log_command(ctx,"bot info")
 
 @bot_group.with_command
 @tanjun.with_bool_slash_option("permanent","Should this activity stay until a bot restart?",default=False)
