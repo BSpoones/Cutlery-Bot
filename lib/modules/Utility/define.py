@@ -5,9 +5,9 @@ Solely for use in the Cutlery Bot discord bot
 Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#Define
 """
 
-import logging, re, tanjun, requests_async as requests
+import logging, re, tanjun, requests_async as requests, hikari
 from bs4 import BeautifulSoup
-from tanjun.abc import Context as Context
+from tanjun.abc import SlashContext as SlashContext
 
 from lib.core.client import Client
 from lib.core.error_handling import CustomError
@@ -48,8 +48,9 @@ define_component = tanjun.Component()
 @define_component.add_slash_command
 @tanjun.with_str_slash_option("word","Choose a word to get the definition for")
 @tanjun.as_slash_command("define","Gets the definition of a word")
-async def define_command(ctx: Context, word: str):
-    await ctx.respond( # Wait message
+async def define_command(ctx: SlashContext, word: str):
+    await ctx.defer()
+    await ctx.edit_initial_response( # Wait message
         embed = auto_embed(
             type="info",
             author=f"{COG_TYPE}", 
