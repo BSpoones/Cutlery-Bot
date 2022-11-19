@@ -196,7 +196,23 @@ class Timetable():
             colour = colour,
             thumbnail = image_link if image_link else None
         )
-        await self.bot.rest.create_message(channel=channel_id,embed=embed)
+        # For lincoln uni only, hyperlink to attendance registration
+        if school.lower() == "university of lincoln":
+            button = (
+                bot.rest.build_action_row()
+                .add_button(ButtonStyle.LINK, "https://registerattendance.lincoln.ac.uk")
+                .set_label("Attendance")
+                .add_to_container()
+                .add_button(ButtonStyle.LINK, room_link)
+                .set_label("Directions")
+                .add_to_container()
+            )
+            # Will create a button if it's from the UoL, or none if it's any other school
+            components = [button]
+        else:
+            components = []
+        
+        await self.bot.rest.create_message(channel=channel_id,embed=embed, components=components)
         
     async def send_lesson_countdown(self,*args):
         """
@@ -207,7 +223,6 @@ class Timetable():
         lesson = args[0]
         alert_time = args[1]
         lesson_alert_times: list = args[2]
-        print(lesson)
         # This countdown will only occur at lesson_start - alert_time.
         # Meaning a current datetime can be used instead of calculating
         # the current lesson
@@ -216,35 +231,37 @@ class Timetable():
         group_id = lesson[1]
         if self.is_datetime_in_holiday(group_id, now):
             # No lessons during a group's holiday
+            logging.info(f"Lesson during a holiday for {group_id} in lesson {lesson}")
             return
         
         alert_time_index = lesson_alert_times.index(alert_time) # Finds out what alert time this countdown is refering to
+        logging.info(f"Attempting lesson countdown for {group_id} in lesson {lesson}")
         
-        # Checks for current time being in a lesson
-        if self.is_datetime_in_lesson(group_id, now) is None: # None = datetime is not in any lessons in the group
-            # If this countdown is not in a lesson
-            if alert_time_index == 0:
-                # Sends the embed, since this is the first countdown
+        # Attempting to send a lesson embed
+        # The lesson embed will only be sent once at the earliest possible time without clasing with another lesson
+        
+        # Checking if the current countdown is in a lesson
+        if self.is_datetime_in_lesson(group_id, now) is None: # None meaning datetime is not in a lesson in the group
+            if alert_time_index == 0: # If the first item isn't in a lesson then it is automatically the earliest
+                logging.info(f"Earliest item in list for {group_id} in lesson {lesson}")
                 await self.send_lesson_embed(lesson)
                 await asyncio.sleep(2) # This ensures that the lesson embed always comes before the lesson countdown
-            else:
-                # If this countdown is not the first in the alert list
-                
-                # Find the last alert time and check if that was in a lesson
+            else: # If it's not the first in the list, check the previous alert time
                 last_alert_time = lesson_alert_times[alert_time_index-1]
                 time_of_last_alert = now - datetime.timedelta(minutes = (last_alert_time - alert_time))
-                print(alert_time, last_alert_time, time_of_last_alert)
                 if self.is_datetime_in_lesson(group_id, time_of_last_alert) is None:
                     # This means that the last countdown wasn't in a lesson, meaning an embed should have already sent
+                    logging.info(f"Not sending embed. Last countdown not in lesson for {group_id} in lesson {lesson}")
                     pass
                 else:
                     # This means that the last countdown was in a lesson, but this one isn't. Meaning this is the first
                     # out of lesson countdown and therefore should send an embed
+                    logging.info(f"Sending embed - Last item was in lesson for {group_id} in lesson {lesson}")
                     await self.send_lesson_embed(lesson)
                     await asyncio.sleep(2)
         else:
             # If current time is in a lesson
-            
+            logging.info(f"Current time in lesson - for {group_id} in lesson {lesson}")
             if alert_time == 0:
                 # If the time is in a lesson, but the lesson is starting, the embed MUST be shown
                 if len(lesson_alert_times) > 1: # Ensuring that 0 wasn't the only alert time
@@ -252,13 +269,16 @@ class Timetable():
                     time_of_last_alert = now - datetime.timedelta(minutes = (last_alert_time - alert_time))
                     if self.is_datetime_in_lesson(group_id, time_of_last_alert) is None:
                         # If the last alert time wasn't in a lesson then an embed has already been sent
+                        logging.info(f"Alert time is 0 and last alert time not in lesson for {group_id} in lesson {lesson}")
                         pass
                     else:
                         # The last alert time was in a lesson, therefore an embed must be sent
+                        logging.info(f"All alert times were in lesson -  for {group_id} in lesson {lesson}")
                         await self.send_lesson_embed(lesson)
                         await asyncio.sleep(2)
                 else:
                     # There is only one alert, meaning it MUST be sent
+                    logging.info(f"Only 1 alert -  for {group_id} in lesson {lesson}")
                     await self.send_lesson_embed(lesson)
                     await asyncio.sleep(2) 
             # If current time is in lesson and it's not the final alert time, do nothing
@@ -385,6 +405,21 @@ class Timetable():
             colour = self.random_hex_colour()
         )
         
+        # Permission declaration
+        CONNECT_DENY = hikari.PermissionOverwrite(
+            id=ctx.guild_id,
+            type=hikari.PermissionOverwriteType.ROLE,
+            deny=(
+                hikari.Permissions.CONNECT
+            ),
+        )
+        VIEW_DENY = hikari.PermissionOverwrite(
+            id=ctx.guild_id,
+            type=hikari.PermissionOverwriteType.ROLE,
+            deny=(
+                hikari.Permissions.VIEW_CHANNEL
+            ),
+        )
         # Creating channels
         category = await bot.rest.create_guild_category(
             guild_id,
@@ -418,6 +453,7 @@ class Timetable():
                         hikari.Permissions.VIEW_CHANNEL
                     ),
                 ),
+                VIEW_DENY,
             ]
         )
         nl_day_channel = await bot.rest.create_guild_voice_channel(
@@ -432,6 +468,7 @@ class Timetable():
                         hikari.Permissions.CONNECT
                     ),
                 ),
+                VIEW_DENY,
             ]
         )
         nl_time_channel = await bot.rest.create_guild_voice_channel(
@@ -446,6 +483,7 @@ class Timetable():
                         hikari.Permissions.CONNECT
                     ),
                 ),
+                VIEW_DENY,
             ]
         )
         
