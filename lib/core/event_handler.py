@@ -85,7 +85,7 @@ class EventHandler():
             thumbnail = event.guild.icon_url,
             colour = hikari.Colour(GREEN)
         )
-        await add_guild_to_db(event.guild)
+        add_guild_to_db(event.guild)
         await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
         
     async def on_guild_unavailable_event(self, event: hikari.GuildUnavailableEvent):
