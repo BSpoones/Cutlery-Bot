@@ -66,9 +66,9 @@ async def command_leaderboard_command(
     if page is None:
         page = 1
     if serveronly:
-        commands_lst = db.records("SELECT command FROM command_logs WHERE guild_id = ?",str(ctx.guild_id))
+        commands_lst = db.records("SELECT command FROM command_logs WHERE guild_id = ? ORDER BY time_sent ASC",str(ctx.guild_id))
     else:
-        commands_lst = db.records("SELECT command FROM command_logs")
+        commands_lst = db.records("SELECT command FROM command_logs ORDER BY time_sent ASC")
     commands_lst = [x[0] for x in commands_lst]
 
     a = dict(Counter(commands_lst))
@@ -122,9 +122,9 @@ async def command_leaderboard_command(
 def build_page(ctx: Context, page, amount, serveronly, bot:hikari.GatewayBot) -> Embed:
     offset = amount * (page-1)
     if serveronly:
-        commands_lst = db.records("SELECT * FROM command_logs WHERE guild_id = %s ORDER BY command_log_id DESC LIMIT %s,%s",str(ctx.guild_id),offset,amount) # Offset first, limit second
+        commands_lst = db.records("SELECT * FROM command_logs WHERE guild_id = %s  ORDER BY time_sent DESC LIMIT %s,%s",str(ctx.guild_id),offset,amount) # Offset first, limit second
     if not serveronly:
-        commands_lst = db.records("SELECT * FROM command_logs ORDER BY command_log_id DESC LIMIT %s,%s",offset,amount) # Offset first, limit second
+        commands_lst = db.records("SELECT * FROM command_logs  ORDER BY time_sent DESC LIMIT %s,%s",offset,amount) # Offset first, limit second
     
     longest_command_id_length = len(str(commands_lst[0][0])) # Gets length of first item from db query, the highest number in the list    
     longest_command_name_length = len(max(list(map(lambda x: x[4],commands_lst)),key=len))
@@ -178,6 +178,10 @@ async def command_logs_command(
     try:
         with bot.stream(InteractionCreateEvent, timeout=INTERACTION_TIMEOUT).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
             async for event in stream:
+                try:
+                    print(event.id)
+                except:
+                    pass
                 await event.interaction.create_initial_response(
                     ResponseType.DEFERRED_MESSAGE_UPDATE,
                 )
