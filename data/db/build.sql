@@ -214,7 +214,7 @@ CREATE TABLE IF NOT EXISTS lesson_groups (
     nl_day_id DECIMAL(21,0),
     nl_time_id DECIMAL(21,0),
     image_link TEXT,
-    alert_times TEXT, -- Seperated by a space
+    alert_times TEXT, -- Seperated by a ,
     school TEXT, -- Used for school specific features hard coded in (UoL only)
     FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (guild_id) REFERENCES guilds (guild_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -312,4 +312,19 @@ CREATE TABLE IF NOT EXISTS reminders  (
     FOREIGN KEY (channel_id) REFERENCES channels (channel_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (owner_id) REFERENCES users (user_id) ON DELETE CASCADE ON UPDATE CASCADE
     -- Can't add a FK for target since target could be User | Role | "everyone"
+);
+
+CREATE TABLE IF NOT EXISTS mcstatus (
+    guild_id DECIMAL(21,0),
+    category_id DECIMAL(21,0) NOT NULL,
+    channel_id DECIMAL(21,0) NOT NULL,
+    user_id DECIMAL(21,0) NOT NULL,
+    display_name VARCHAR(100),
+    host VARCHAR(256) NOT NULL,
+    port INT(5) NOT NULL,
+    notify_if_offline BOOL NOT NULL,
+    legacy BOOL NOT NULL,
+    PRIMARY KEY(guild_id,display_name),
+    FOREIGN KEY (guild_id) REFERENCES guilds (guild_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (channel_id) REFERENCES channels (channel_id) ON DELETE CASCADE ON UPDATE CASCADE
 )
