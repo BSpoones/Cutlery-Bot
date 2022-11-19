@@ -565,6 +565,7 @@ async def guild_channel_delete(bot: hikari.GatewayBot, event: hikari.GuildChanne
     """
     channel = event.channel
     guild = await channel.fetch_guild()
+    # Fixed issue where channels without a category were trying to find the category name
     try:
         if channel.parent_id is not None:
             category = (await bot.rest.fetch_channel(channel.parent_id)).name
