@@ -3,7 +3,7 @@ from tanjun.abc import Context as Context
 from dateutil.relativedelta import relativedelta
 import datetime, hikari, tanjun, logging, re
 from lib.db import db
-
+from lib.core.error_handling import CustomError
 
 def next_occourance_of_time(time_input: datetime.time) -> datetime.datetime:
     """
@@ -216,8 +216,7 @@ def get_colour_from_ctx(ctx: tanjun.abc.Context):
 
 def get_colour_from_member(member: hikari.Member):
     return (member.get_top_role().color)
-      
-    
+ 
 async def allocate_startup_db(bot: hikari.GatewayBot):
     """
     Adds all information about guilds, channels, roles, and guild users to the
@@ -473,6 +472,3 @@ def add_member_role(member_id, role_id):
     # Nothing in this table can be edited, only removed
     db.commit()
     
-    
-
-

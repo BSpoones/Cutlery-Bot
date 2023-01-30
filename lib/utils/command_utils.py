@@ -4,12 +4,16 @@ from tanjun.abc import Context as Context
 
 from data.bot.data import RED,GREEN,BLUE,AMBER,DARK_RED,DARK_GREEN, DEAFULT_COLOUR, OWNER_IDS
 from lib.db import db
-from lib.core.error_handling import CustomError
 
 def get_colour_from_ctx(ctx: tanjun.abc.Context):
-    return (ctx.member.get_top_role().color)
+    return (get_colour_from_member(ctx.member))
 
 def get_colour_from_member(member: hikari.Member):
+    roles = member.get_roles()
+    # Finds the highest role with a colour
+    for role in roles:
+        if str(role.colour) != "#000000":
+            return role.color 
     return (member.get_top_role().color)
 
 def status_check(status: int):
@@ -71,7 +75,6 @@ def auto_embed(**kwargs):
                         else:
                             colour = get_colour_from_member(kwargs["member"])
                     else:
-                        logging.error("AUTO_EMBED: A member object hasn't been supplied when it was expected")
                         colour = hikari.Colour(DEAFULT_COLOUR)
                 case "error":
                     colour = hikari.Colour(RED)
@@ -165,6 +168,8 @@ def log_command(*args):
         logging.critical(f"Failed to log command: {e}")
         
 def permission_check(ctx: Context, permissions: list[hikari.Permissions] or hikari.Permissions):
+    from lib.core.error_handling import CustomError
+    
     # Converting single permission to list
     if not isinstance(permissions,list):
         permissions = [permissions]

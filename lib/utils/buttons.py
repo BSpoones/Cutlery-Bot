@@ -1,25 +1,25 @@
 import hikari
-from hikari.messages import ButtonStyle
+from hikari import ButtonStyle
 
 
 DELETE_CUSTOM_ID = "AUTHOR_DELETE_BUTTON"
 
 EMPTY_ROW = (
-    hikari.impl.ActionRowBuilder()
+    hikari.impl.MessageActionRowBuilder()
     .add_button(ButtonStyle.SECONDARY,"Expired")
     .set_label("Buttons expired, run command again to view")
     .set_is_disabled(True)
     .add_to_container()
 )
 ERROR_ROW = (
-    hikari.impl.ActionRowBuilder()
+    hikari.impl.MessageActionRowBuilder()
     .add_button(ButtonStyle.PRIMARY, "NOTIFY")
     .set_emoji("🔔")
     .set_label("Notify BSpoones")
     .add_to_container()
 )
 NOTIFIED_ROW = (
-    hikari.impl.ActionRowBuilder()
+    hikari.impl.MessageActionRowBuilder()
     .add_button(ButtonStyle.PRIMARY, "NOTIFY-SENT")
     .set_emoji("✅")
     .set_label("Notification sent!")
@@ -27,7 +27,7 @@ NOTIFIED_ROW = (
     .add_to_container()
 )
 ONE_PAGE_ROW = (
-    hikari.impl.ActionRowBuilder()
+    hikari.impl.MessageActionRowBuilder()
     .add_button(ButtonStyle.SECONDARY,"Expired")
     .set_label("There is only one page")
     .set_is_disabled(True)
@@ -35,14 +35,14 @@ ONE_PAGE_ROW = (
 )
 
 DELETE_ROW = (
-    hikari.impl.ActionRowBuilder()
+    hikari.impl.MessageActionRowBuilder()
     .add_button(hikari.ButtonStyle.DANGER, DELETE_CUSTOM_ID)
     .set_emoji("❌")
     .add_to_container()
 )
 
 PAGENATE_ROW = (
-    hikari.impl.ActionRowBuilder()
+    hikari.impl.MessageActionRowBuilder()
     .add_button(ButtonStyle.PRIMARY, "FIRST")
     .set_emoji("⏮")
     .add_to_container()
@@ -67,7 +67,7 @@ PAGENATE_ROW = (
 )
 
 TIMELINE_ROW = (
-    hikari.impl.ActionRowBuilder()  
+    hikari.impl.MessageActionRowBuilder()  
     .add_button(ButtonStyle.PRIMARY, "BACK")
     .set_emoji("◀")
     .add_to_container()
@@ -83,7 +83,7 @@ TIMELINE_ROW = (
 )
 
 UNDO_ROW = (
-    hikari.impl.ActionRowBuilder()
+    hikari.impl.MessageActionRowBuilder()
     .add_button(ButtonStyle.PRIMARY, "UNDO")
     .set_emoji("↩")
     .set_label("Undo command")
