@@ -1,12 +1,13 @@
 
-import asyncio, random, re, hikari, tanjun, datetime, validators, csv
-import logging
+import asyncio, random, re, hikari, tanjun, datetime, validators, logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from lib.core.error_handling import CustomError
 from apscheduler.triggers.date import DateTrigger
-from hikari.messages import ButtonStyle
+from hikari import ButtonStyle
 from PIL import Image
+from PIL import Image, ImageDraw, ImageFont,ImageColor
 from humanfriendly import format_timespan
 from tanjun import Client
 from data.bot.data import OWNER_IDS
@@ -18,7 +19,7 @@ from ...db import db
 
 
 HHMM_FORMAT = "%H%M"
-DEFAULT_ALERT_TIMES = "20,10,5,0"
+DEFAULT_ALERT_TIMES = "20,0"
 # All IDs and variables are standardised in snake_case
 
 class Timetable():
@@ -43,8 +44,25 @@ class Timetable():
             self.lesson_scheduler = AsyncIOScheduler()
         except:
             self.lesson_scheduler = AsyncIOScheduler()
-            
-        lessons = db.records("SELECT * FROM lessons")
+        """
+        Introducing a new method to send lessons! (yes this is the sixth rewrite in the last 2 years, i don't like it either)
+        
+        Instead of loading an entire year's worth of lessons at once, it makes more sense to load each day's lessons
+        """
+        # Getting code to reload lesson schedule at 1am everyday (why 1am? why not)
+        func_trigger = CronTrigger(
+            hour = 1,
+            minute = 0,
+            second = 0
+        )
+        self.lesson_scheduler.add_job(
+            self.load_timetable,
+            func_trigger
+        )
+        lesson_group_ids = db.column("SELECT lesson_group_id FROM lesson_groups")
+        lessons = self.get_day_timetable(lesson_group_ids, datetime.datetime.today()+datetime.timedelta(days=1))
+        
+        # lessons = db.records("SELECT * FROM lessons")
         for lesson in lessons:
             lesson_group_id = lesson[1]
             day_of_week = lesson[4]
@@ -61,6 +79,7 @@ class Timetable():
             # All lessons will be in the x-y format for week numbers.
             # Weekly lessons will just have week 1-51 on them
             week_start_datetimes = self.get_week_start_datetimes(week_numbers, start_date)
+            current_date = datetime.datetime.today().date()
             for start_datetime in week_start_datetimes:
                 # All of these are week based (e.g weeks 1-6,8,10-15)
                 # Weekly lessons (old method) will be week 1-51 unless specified otherwise
@@ -74,10 +93,14 @@ class Timetable():
                         start_date = start_week + datetime.timedelta(days = day_of_week)
                         start_time_object = (datetime.datetime.strptime(start_time,HHMM_FORMAT)- datetime.timedelta(minutes=alert_time)).time()
                         start_datetime = datetime.datetime.combine(start_date,start_time_object)
-                        
+                        # To prevent jobs starting in the past, keeping adding 7 days until there are no jobs that start in the past
+                        while start_datetime.date() < current_date:
+                            # While The start date is before the current date, it means the lesson starts in the past
+                            start_datetime += datetime.timedelta(days=7)
                         end_date = end_week + datetime.timedelta(days = day_of_week)
                         end_time_object = (datetime.datetime.strptime(end_time,HHMM_FORMAT) - datetime.timedelta(minutes=alert_time)).time()
                         end_datetime = datetime.datetime.combine(end_date,end_time_object)
+                        # print(start_datetime)
                         trigger = IntervalTrigger(
                             days = 7,
                             start_date = start_datetime,
@@ -100,15 +123,15 @@ class Timetable():
                         lesson_date = start_week + datetime.timedelta(days = day_of_week)
                         lesson_time = (datetime.datetime.strptime(start_time,HHMM_FORMAT) - datetime.timedelta(minutes=alert_time)).time()
                         lesson_datetime = datetime.datetime.combine(lesson_date,lesson_time)
-                        
-                        trigger = DateTrigger(
-                            run_date = lesson_datetime,
-                        )
-                        self.lesson_scheduler.add_job(
-                            self.send_lesson_countdown,
-                            trigger,
-                            args = [lesson, alert_time, lesson_alert_times]
-                        )
+                        if not lesson_datetime.date() < current_date:
+                            trigger = DateTrigger(
+                                run_date = lesson_datetime,
+                            )
+                            self.lesson_scheduler.add_job(
+                                self.send_lesson_countdown,
+                                trigger,
+                                args = [lesson, alert_time, lesson_alert_times]
+                            )
 
         self.lesson_scheduler.start()
 
@@ -198,15 +221,23 @@ class Timetable():
         )
         # For lincoln uni only, hyperlink to attendance registration
         if school.lower() == "university of lincoln":
-            button = (
-                bot.rest.build_action_row()
-                .add_button(ButtonStyle.LINK, "https://registerattendance.lincoln.ac.uk")
-                .set_label("Attendance")
-                .add_to_container()
-                .add_button(ButtonStyle.LINK, room_link)
-                .set_label("Directions")
-                .add_to_container()
-            )
+            if room.lower() != "online":
+                button = (
+                    hikari.impl.MessageActionRowBuilder()
+                    .add_button(ButtonStyle.LINK, "https://registerattendance.lincoln.ac.uk")
+                    .set_label("Attendance")
+                    .add_to_container()
+                    .add_button(ButtonStyle.LINK, room_link)
+                    .set_label("Directions")
+                    .add_to_container()
+                )
+            else:
+                button = (
+                    hikari.impl.MessageActionRowBuilder()
+                    .add_button(ButtonStyle.LINK, "https://registerattendance.lincoln.ac.uk")
+                    .set_label("Attendance")
+                    .add_to_container()
+                )
             # Will create a button if it's from the UoL, or none if it's any other school
             components = [button]
         else:
@@ -290,25 +321,12 @@ class Timetable():
         group_id = group_info[0]
         ping_role_id = int(group_info[6])
         channel_id = int(group_info[9])
-        school: str = group_info[15]        
         
-        # For lincoln uni only, hyperlink to attendance registration
-        if school.lower() == "university of lincoln":
-            final_output_msg = f"<@&{ping_role_id}> your lesson is now!"
-            button = (
-                bot.rest.build_action_row()
-                .add_button(ButtonStyle.LINK, "https://registerattendance.lincoln.ac.uk")
-                .set_label("Attendance")
-                .add_to_container()
-            )
-            # Will create a button if it's from the UoL, or none if it's any other school
-            components = [button]
-        else:
-            components = []
+        final_output_msg = f"<@&{ping_role_id}> your lesson is now!"
         
         # If the lesson is starting
         if alert_time == 0:
-            await self.bot.rest.create_message(channel_id,final_output_msg,role_mentions=True, components = components)
+            await self.bot.rest.create_message(channel_id,final_output_msg,role_mentions=True)
             await asyncio.sleep(2) # Ensures current lesson isn't caught
             await self.update_time_channels(group_id)
         else:
@@ -319,7 +337,7 @@ class Timetable():
                 message = await self.bot.rest.create_message(channel_id,f"<@&{ping_role_id}> your lesson is in `{format_timespan(alert_time*60)}`",role_mentions=True)
                 await asyncio.sleep(delete_after)
                 await message.delete()
-                # TODO: Figure out a way for this to work even on a bot restart
+                # TODO: Figure out how to delete the message even on a bot restart (pool of messages to be deleted?)
     
     def get_week_start_datetimes(self,week_num_str: str, group_start_date: datetime.datetime) -> list[datetime.datetime | list[datetime.datetime]]:
         """
@@ -586,7 +604,7 @@ class Timetable():
             end_time = re.sub("[^0-9]","",item[3])
             week_nums = ((item[4])[5:]).replace(" ","")
             subject = item[5]
-            room = item[8]
+            room = ((item[8]).split(";"))[0] # Some lessons have multiple rooms (just why)
             teacher = ((item[9]).split(";"))[0] # Only using first teacher
             db.execute(
                 "INSERT INTO lessons (lesson_group_id, subject_id, teacher_id, day_of_week, week_numbers, start_time, end_time, room) VALUES (?,(SELECT subject_id FROM subjects WHERE name = ? AND lesson_group_id = ?),(SELECT teacher_id FROM teachers WHERE name = ? AND lesson_group_id = ?),?,?,?,?,?)",
@@ -807,9 +825,7 @@ class Timetable():
     def is_datetime_in_lesson(self,group_id, now):
         now_time = int(now.strftime("%H%M"))
         day_timetable = self.get_day_timetable(group_id,now)
-        print("A")
         if day_timetable == []:
-            print("B")
             return None
         else:
             # Finding a lesson that has a start time before the current time and an end time
@@ -818,12 +834,8 @@ class Timetable():
             for lesson in day_timetable:
                 start_time = int(lesson[6])
                 end_time = int(lesson[7])
-                print(start_time,now_time,end_time)
-                print(start_time <= now_time <= end_time)
                 if start_time <= now_time <= end_time:
-                    print("C")
                     return lesson
-            print("D")
             return None # If it gets to the end of the for loop then it won't find a lesson
     
     def is_datetime_in_holiday(self,groupid,now):
@@ -889,8 +901,108 @@ class Timetable():
         hex = "{:06x}".format(random.randint(0, 0xFFFFFF))
         return hex
     
-    def build_weeklyschedule_image():
-        pass
+    def build_weeklyschedule_image(self, group_ids, date):
+        teachers = set([])
+
+        img = Image.new('RGB', size=(7500, 6750), color=(255,255,255))
+        font = ImageFont.truetype("C:\Windows\Fonts\Arial.ttf", 90)
+        draw = ImageDraw.Draw(img)
+        DAYS_OF_WEEK = ["MON","TUE","WED","THU","FRI","SAT","SUN"]
+
+        lessons = self.get_week_timetable(group_ids,date)
+
+        # Top section
+        draw.line((0, 400, 7500, 400), fill=(0, 0, 0), width=10) # Line at top for days
+        
+        for i, val in enumerate(DAYS_OF_WEEK):
+            draw.line((i*1000+500,0,i*1000+500,5500), fill=(0, 0, 0), width=10) # Draws lines to divide days of week 
+            draw.text((i*1000+900, 200), val.upper(), fill=(0,0,0),font=font)# Draws days of week in each column
+
+        #Timetable section
+
+        for i in range(10):
+            """
+            Draws times that go along the left side
+            """
+            hour_time = datetime.time(hour=(8+i))
+            half_hour_time = datetime.time(hour=(8+i),minute=30)
+
+            # Draws hour lines
+            draw.line((0,(500+(500*i)),7500,(500+(500*i))),fill=(0,0,0),width=1)
+            draw.line((0,(750+(500*i)),7500,(750+(500*i))),fill=(128,128,128),width=1)
+            # Draws time text that goes along to the left
+            draw.text((250,(500+i*500)),(hour_time.strftime("%H:%M")),fill=(0,0,0),font=font)
+            draw.text((250,(750+(i*500))),(half_hour_time.strftime("%H:%M")),fill=(0,0,0),font=font)
+        # Timetable
+        for lesson in lessons:
+            # Start and end time calcs
+            start_datetime = datetime.time(hour=int(lesson[6][:2]), minute=int(lesson[6][2:]))
+            end_datetime = datetime.time(hour=int(lesson[7][:2]), minute=int(lesson[7][2:]))
+            start_hour = int(lesson[6][:2])
+            start_min = int(lesson[6][2:])
+            end_hour = int(lesson[7][:2])
+            end_min = int(lesson[7][2:])
+            start_time = start_datetime.strftime("%H:%M")
+            end_time = end_datetime.strftime("%H:%M")
+            
+            # Database vars
+            day_of_week = lesson[4]
+            lesson_room = lesson[8]
+            teacher_id = lesson[3]
+            teacher_info = db.record("SELECT * FROM teachers WHERE teacher_id = ?", teacher_id)
+            teachers.add(teacher_info)
+            teacher = teacher_info[2]
+            hexcolour = str(teacher_info[3])
+            colour = ImageColor.getrgb("#"+hexcolour)
+            
+            
+            # Starting pad of 500px, then each hour block counts as 500px. Starting at 08:00
+            # E.g - 09:00 is 1000px down, 09:30 is 1250px down
+            # Each half an hour increment is 250px, with an initial start point of 500px down
+            # 2 lines of text fit into a 250px 
+            start_time_px = 500+(500*(start_hour-8) + 500*(start_min/60))
+            end_time_px = 500+(500*(end_hour-8) + 500*(end_min/60))
+            block_height = end_time_px-start_time_px
+            max_lines = int(block_height // 125) # Max amount of lines of text that can fit
+            
+            message =  f"{start_time} - {end_time}\n{lesson_room}"#\n{teacher}"
+            vertical_pad = 30
+            if block_height <= 250:
+                # If the lesson is too short for the text to fit into a block
+                message = f"{start_time} - {end_time}\n{lesson_room}"#" {teacher}"
+                vertical_pad = 1
+
+            draw.rectangle((day_of_week*1000+600, start_time_px, day_of_week*1000+1000+400, end_time_px), fill=(colour), outline=(0, 0, 0)) # Draws rectangle with a 100px padding from the daily line seperators
+            if (sum(colour)) <= 290:
+                # If the background colour is too dark then the text changes to white
+                draw.text((day_of_week*1000+630, start_time_px+vertical_pad), message, fill=(255,255,255), font=font, stroke_width = 2)
+            else:
+                draw.text((day_of_week*1000+630, start_time_px+vertical_pad), message, fill=(0,0,0), font=font, stroke_width = 2)
+        # Hour line
+        DayOfWeek = datetime.datetime.today().weekday() 
+        # The following is the pixel coords for the line
+        x1 = (DayOfWeek*1000)+500
+        x2 = ((DayOfWeek+1)*1000)+500
+        Hour = datetime.datetime.today().hour
+        Min = datetime.datetime.today().minute
+        print(x1,x2)
+        y_pos = 500+(Hour-8)*500 + (Min/60 * 500)
+
+        if 8 <= Hour < 18:
+            draw.line((x1,y_pos,x2,y_pos+1),fill=(255,0,0),width=10)
+            draw.polygon([(150,y_pos-50), (200, y_pos), (150,y_pos+50)], fill = (255,0,0))
+
+        # Bottom section
+        draw.text((100, 5600), text="Teachers", fill=(0,0,0), font=font, stroke_width = 2)
+
+        for i, teacher in enumerate(teachers):
+            TeacherName = teacher[2]
+            TeacherColour = teacher[4]
+            # draw.polygon([100,5600+(100*i)],)
+
+        draw.line((0, 5500, 7500, 5500), fill=(0, 0, 0), width=10) # Line at top for days
+
+        return img
     
     def is_student_mod(self, lesson_group_id, user_id):
         if int(user_id) in OWNER_IDS:
