@@ -5,8 +5,8 @@ Solely for use in the Cutlery Bot discord bot
 Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#UrbanDefine
 """
 
-import tanjun, json, re
-from hikari.messages import ButtonStyle
+import tanjun, json, re, hikari
+from hikari import ButtonStyle
 from tanjun.abc import Context as Context
 from urllib.request import urlopen
 from urllib.parse import quote as urlquote
@@ -102,7 +102,7 @@ async def urbandictionary(ctx: Context,word: str):
             ctx=ctx
         )
         button = (
-            ctx.rest.build_action_row()
+            hikari.impl.MessageActionRowBuilder()
             .add_button(ButtonStyle.LINK, link)
             .set_label("View all definitions")
             .set_emoji("🌐")
