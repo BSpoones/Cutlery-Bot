@@ -3,6 +3,7 @@ from tanjun.abc import SlashContext
 from data.bot.data import INTERACTION_TIMEOUT, OWNER_IDS
 
 from lib.core.client import Client
+from io import BytesIO
 from hikari.events.interaction_events import InteractionCreateEvent
 from hikari.interactions.base_interactions import ResponseType
 from lib.core.error_handling import CustomError
@@ -97,10 +98,8 @@ async def group_remove_command(ctx: SlashContext, group_name):
     nl_time_id = str(group_info[12])
     category_id = str(group_info[8])
     
-    await ctx.rest.delete_channel(lesson_announcement_channel_id)
-    await ctx.rest.delete_channel(nl_day_id)
-    await ctx.rest.delete_channel(nl_time_id)
-    await ctx.rest.delete_channel(category_id)
+    for channel in (lesson_announcement_channel_id,nl_day_id,nl_time_id,category_id):
+        await ctx.rest.delete_channel(channel)
     
     # Parsing old data
     # TODO: Convert to CSV for uni of lincoln timetables
@@ -535,7 +534,31 @@ async def currentlesson_command(ctx: SlashContext, group: str = None):
     )
     await ctx.respond(embed=embed)
     log_command(ctx,"current_lesson")
+
+@timetable_component.add_slash_command
+@tanjun.with_str_slash_option("group","A group name or group code to search for", default=None)
+@tanjun.as_slash_command("weeklyschedule","Shows an image of your weekly schedule")
+async def weeklyschedule_command(ctx: SlashContext, group: str = None):
+    # Parsing group
+    if group is None:
+        group_ids = CB_TIMETABLE.get_group_ids_from_user(ctx.author.id)
+        if group_ids is None:
+            raise CustomError("No group found","You do not appear to be a student in any group.")
+    else:
+        group_ids = db.column("SELECT * FROM lesson_groups WHERE group_name = ?",group)
+        if group_ids is None:
+            raise CustomError("Group not found","Could not find that group in this server, please check your spelling")
+    group_ids = list(map(str,group_ids))
+    date = datetime.datetime.today()
     
+    image = CB_TIMETABLE.build_weeklyschedule_image(group_ids, date)
+    with BytesIO() as image_binary: # Used to turn Pillow image to binary for discord to upload
+        image.save(image_binary, 'PNG')
+        image_binary.seek(0)
+        file = hikari.Bytes(image_binary,"image.png")
+        
+    await ctx.respond(attachment=file)
+ 
 @tanjun.as_loader
 def load_components(client: Client):
     client.add_component(timetable_component.copy())
