@@ -9,14 +9,14 @@ from lib.core.client import Client
 from tanjun.abc import Context as Context
 from data.bot.data import VERSION
 from hikari import __version__ as hikari_version
-from tanjun import __version__ as tanjun_version
+from importlib.metadata import version as importlib_version
 from platform import python_version
 
 from lib.utils.command_utils import auto_embed, log_command
 from . import COG_TYPE, COG_LINK
 
 version_component = tanjun.Component()
-
+tanjun_version = importlib_version("hikari-tanjun")
 @version_component.add_slash_command
 @tanjun.as_slash_command("version","Get Cutlery Bot's version")
 async def version_command(ctx: Context):
