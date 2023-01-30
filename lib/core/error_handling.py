@@ -19,6 +19,7 @@ HOOKS = tanjun.AnyHooks()
 async def on_error(ctx: SlashContext, exc: Exception, bot: hikari.GatewayBot = tanjun.injected(type=hikari.GatewayBotAware)):
     exception_type = (type(exc).__name__)
     exception_args = "\n".join(list(map(str,exc.args)))
+    print(exc.__context__)
     if exception_type == "CustomError":
         sys.tracebacklimit = 0
         error: CustomError = exc
@@ -29,7 +30,15 @@ async def on_error(ctx: SlashContext, exc: Exception, bot: hikari.GatewayBot = t
             description=f"{error.error_description}",
             ctx=ctx
         )
-        
+    elif exception_type == "ForbiddenError": # For servers that haven't given the bot Admin
+        sys.tracebacklimit = 0
+        embed = auto_embed(
+            type="error",
+            author="Error",
+            title=f"Permission error",
+            description=f"I do not have the required permissions to do this. Please contact an administrator or server owner to give me the required permissions.\n\n**Required Permissions: `Administrator`** ",
+            ctx=ctx
+        )
     else:
         sys.tracebacklimit = 999
         embed = auto_embed(
@@ -45,9 +54,9 @@ async def on_error(ctx: SlashContext, exc: Exception, bot: hikari.GatewayBot = t
     except:
         await ctx.create_followup(embed=embed,flags=hikari.MessageFlag.EPHEMERAL, components=[ERROR_ROW])
         
-    if exception_type != "CustomError":
+    if exception_type not in ("CustomError",):
         message = await ctx.fetch_initial_response()
-        message_link = f"https://discord.com/channels/{message.guild_id}/{message.channel_id}/{message.id}"
+        message_link = f"https://discord.com/channels/{ctx.guild_id}/{message.channel_id}/{message.id}"
         try:
             with bot.stream(InteractionCreateEvent, timeout=INTERACTION_TIMEOUT).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
                 async for event in stream:
