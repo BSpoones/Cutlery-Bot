@@ -14,5 +14,5 @@ class Client(tanjun.Client):
         path = Path("./lib/modules")
         for ext in path.glob(("**/") + "[!_]*.py"): # Loads all but private python files
             super().load_modules(".".join([*ext.parts[:-1], ext.stem]))
-            logging.info(f"Loaded {ext} module.")
+        logging.info(f"Loaded {len(list(path.glob(('**/') + '[!_]*.py'))):,} module files")
         return self
