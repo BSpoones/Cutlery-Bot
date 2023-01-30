@@ -9,10 +9,9 @@ from humanfriendly import format_timespan
 from psutil import Process, virtual_memory
 from platform import python_version
 from hikari import __version__ as hikari_version
-from hikari.messages import ButtonStyle
-from tanjun import __version__ as tanjun_version
+from hikari import ButtonStyle
+from importlib.metadata import version as importlib_version
 from tanjun.abc import Context as Context
-
 from data.bot.data import OWNER_IDS, VERSION as BOT_VERSION
 from lib.core.error_handling import CustomError
 from lib.core.client import Client
@@ -21,7 +20,7 @@ from lib.modules.Admin import COG_TYPE,COG_LINK
 from ...utils.command_utils import auto_embed, log_command
 
 ACTIVITY_CHOICES = ["Playing","Streaming","Listening to","Watching","Competing in"]
-
+tanjun_version = importlib_version("hikari-tanjun")
 bot_component = tanjun.Component()
 
 bot_group = bot_component.with_slash_command(tanjun.slash_command_group("bot","Bot commands"))
@@ -169,7 +168,7 @@ async def info_command(ctx: Context):
     )
 
     button = (
-        ctx.rest.build_action_row()
+        ctx.rest.build_message_action_row()
         .add_button(ButtonStyle.LINK, "http://bspoones.com/Cutlery-Bot")
         .set_label("Website")
         .add_to_container()
