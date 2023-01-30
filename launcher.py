@@ -3,7 +3,7 @@
 
 Developed by BSpoones:
 6th November 2021 - Current
-Last Update: 2022-10-23 - v0.9.3
+Last Update: 2023-01-30 - v0.9.6
 
 More information: https://bspoones.com/Cutlery-Bot
 
