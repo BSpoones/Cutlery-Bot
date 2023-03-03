@@ -14,7 +14,7 @@ from lib.db import db
 from lib.modules.Admin import COG_TYPE,COG_LINK
 from lib.modules.Logging.logging_funcs import convert_message_to_dict
 from lib.utils.utils import add_channel_to_db, add_guild_to_db
-from data.bot.data import GREEN
+from data.bot.data import GREEN, POSSIBLE_TEXT_CHANNELS
 
 __version__ = "1.1"
 
@@ -178,8 +178,9 @@ async def archive_channel_command(ctx: SlashContext, channel: hikari.GuildTextCh
 async def archive_all_command(ctx: SlashContext, bypass_last_archive: bool = False):
     permission_check(ctx, hikari.Permissions.ADMINISTRATOR)
     # Retrieving all text channels in the guild
-    all_channels = await ctx.rest.fetch_guild_channels(ctx.guild_id)
-    text_channels = [channel for channel in all_channels if channel.type.name in ("GUILD_TEXT", "GUILD_NEWS","GUILD_CATEGORY")]
+    all_channels = list(await ctx.rest.fetch_guild_channels(ctx.guild_id))
+
+    text_channels = [channel for channel in all_channels if channel.type.name in POSSIBLE_TEXT_CHANNELS]
     category_channels = [channel for channel in all_channels if channel.type.name in ("GUILD_CATEGORY")]
     category_channels = sorted(category_channels, key= lambda x: x.position)
     
@@ -191,7 +192,6 @@ async def archive_all_command(ctx: SlashContext, bypass_last_archive: bool = Fal
         sorted_text_channels.append(category)
         sorted_text_channels.extend(sorted([x for x in text_channels if x.parent_id == category.id], key= lambda x: x.position))
     # Removing categories that don't contain text channels
-    category_ids = [x.id for x in category_channels]
     channel_parent_ids = [x.parent_id for x in text_channels if x.type.name != "GUILD_CATEGORY"]
     for category in category_channels:
         if category.id not in channel_parent_ids:
@@ -218,7 +218,8 @@ async def archive_all_command(ctx: SlashContext, bypass_last_archive: bool = Fal
             thumbnail=guild.icon_url if guild else None,
             ctx = ctx
         )
-    message = await ctx.respond(embed=embed)
+    await ctx.respond(embed=embed)
+    message = await ctx.fetch_initial_response()
     
     archived_message_count = 0
     
@@ -263,7 +264,7 @@ async def archive_all_command(ctx: SlashContext, bypass_last_archive: bool = Fal
         except:
             # Error would occur if the initial response window (15m) has elapsed
             try:
-                await ctx.rest.edit_message(ctx.channel_id,message.id, embed=embed)
+                await message.edit(embed=embed)
             except Exception as e:
                 logging.error(f"Failed to edit archive message - {ctx.guild_id} #{channel.id}: {e}")
         
