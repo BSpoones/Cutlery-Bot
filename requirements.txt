@@ -1,5 +1,5 @@
-hikari
-hikari-tanjun
+hikari == 2.0.0.dev116
+hikari-tanjun == 2.11.4
 mysql-connector-python
 apscheduler
 python-dateutil
