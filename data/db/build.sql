@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS guilds (
     guild_id DECIMAL(21,0) PRIMARY KEY,
     owner_id DECIMAL(21,0),
     name     VARCHAR(100)
-);
+) DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS channels (
     guild_id            DECIMAL(21,0),
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS channels (
     position            INT(4) NOT NULL,
     permissions         TEXT,
     FOREIGN KEY (guild_id) REFERENCES guilds (guild_id) ON DELETE CASCADE ON UPDATE CASCADE
-);
+) DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS roles (
     guild_id    DECIMAL(21,0) NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS roles (
     permissions TEXT,
     blacklisted BOOL DEFAULT 0, -- If True, this role should not be re-added when a user joins the server
     FOREIGN KEY (guild_id) REFERENCES guilds (guild_id) ON DELETE CASCADE ON UPDATE CASCADE
-);
+) DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS users (
     user_id  DECIMAL(21,0) PRIMARY KEY,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS guild_members (
     FOREIGN KEY (guild_id) REFERENCES guilds (guild_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     PRIMARY KEY (guild_id, user_id)
-);
+) DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS member_roles (
     user_id DECIMAL(21,0) NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS member_roles (
 CREATE TABLE IF NOT EXISTS log_action (
     action_id BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     action_name VARCHAR(36) NOT NULL UNIQUE
-);
+) DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 
 -- Stores channel instances
 CREATE TABLE IF NOT EXISTS log_channel (
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS message_logs (
     FOREIGN KEY (guild_id) REFERENCES guilds(guild_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (channel_id) REFERENCES channels (channel_id) ON DELETE CASCADE ON UPDATE CASCADE,
     PRIMARY KEY (message_id)
-);
+) DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS command_logs(
     command_log_id BIGINT(20) UNSIGNED  AUTO_INCREMENT PRIMARY KEY,
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS command_logs(
     command text,
     args text DEFAULT NULL,
     time_sent timestamp DEFAULT CURRENT_TIMESTAMP
-);
+) DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 -- Filter module tables --
 
 -- Converts charset to allow emoji
@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS filters(
     warn_message TEXT NOT NULL,
     alert_message BOOL NOT NULL,
     FOREIGN KEY (instance_id) REFERENCES filter_instances (instance_id) ON DELETE CASCADE ON UPDATE CASCADE
-);
+) DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 
 -- AutoPurge module -- 
 
