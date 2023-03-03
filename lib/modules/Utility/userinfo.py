@@ -5,7 +5,6 @@ Solely for use in the Cutlery Bot discord bot
 Documentation: https://www.bspoones.com/Cutlery-Bot/Utility#Userinfo
 """
 import hikari, tanjun
-from lib.core.bot import Bot
 from lib.core.client import Client
 from lib.db import db
 from tanjun.abc import Context as Context
@@ -19,9 +18,11 @@ userinfo_create_component = tanjun.Component()
 @tanjun.with_member_slash_option("target", "Choose a user", default=False)
 @tanjun.as_slash_command("userinfo","Shows the information on a selected user")
 async def user_info_command(ctx: Context, target: hikari.Member):
+    log_command(ctx,"userinfo")
     target = target or ctx.member
-    # try:
     """
+    My solution to user activities (i think)
+    
     Activity.state = Activity name
     Activity.type = Playing | Custom.etc
     Activity.emoji = emoji
@@ -44,6 +45,7 @@ async def user_info_command(ctx: Context, target: hikari.Member):
     roles = (await target.fetch_roles())[1:]  # All but @everyone.
     roles = roles[::-1]
     top_role = target.get_top_role()
+    other_roles = [role for role in roles if role != top_role]
     created_at = int(target.created_at.timestamp())
     joined_at = int(target.joined_at.timestamp())
     status = target.get_presence().visible_status if target.get_presence() else "offline"
@@ -80,9 +82,19 @@ async def user_info_command(ctx: Context, target: hikari.Member):
         try:
             boost_str = f"> Boosting since <t:{int(target.premium_since.timestamp())}:d>"
         except:
-            boost_str = f"> Boost: Yes"
+            boost_str = f"> Boost: :white_check_mark:"
     else:
-        boost_str = f"> Boost: No"
+        boost_str = f"> Boost: :x:"
+        
+    # Message counts
+    message_count = db.count("SELECT COUNT(message_id) FROM message_logs WHERE user_id = ? AND guild_id = ?",str(target.id), str(ctx.guild_id))
+    favourite_channel = db.records("SELECT channel_id, COUNT(*) as cnt FROM message_logs WHERE user_id = ? AND guild_id = ? GROUP By channel_id",str(target.id), str(ctx.guild_id))
+    try:
+        favourite_channel = favourite_channel[0]
+        favourite_channel_str = f"> Favourite channel: <#{favourite_channel[0]}> - {favourite_channel[1]:,} messages"
+    except IndexError: # If the user hasn't sent any (logged) messages
+        favourite_channel_str = f"> Favourite channel: N/A"
+    
     
     description_list = [
         f"**Account info**",
@@ -97,11 +109,14 @@ async def user_info_command(ctx: Context, target: hikari.Member):
         f"**Role info**",
         f"> Role count: `{len(roles):,}`",
         f"> Top role: {top_role.mention if (str(top_role) != '@everyone') else 'No roles'}",
-        f"> Other roles: {' '.join(r.mention for r in sorted(roles[1:], key= lambda x: x.name)) if len(roles[1:]) > 0 else 'No roles'}",
+        f"> Other roles: {' '.join(r.mention for r in sorted(other_roles, key= lambda x: x.name)) if len(other_roles) > 0 else 'No roles'}",
         f"{boost_str}",
         f"**Command info**",
-        f"> Total sent: {commands_count}",
-        f"{fav_command_str}"
+        f"> Total sent: `{commands_count:,}`",
+        f"{fav_command_str}",
+        f"**Message info**",
+        f"> Total sent: `{message_count:,}`",
+        f"{favourite_channel_str}"
     ]  
     description = "\n".join(description_list)
 
@@ -116,7 +131,6 @@ async def user_info_command(ctx: Context, target: hikari.Member):
         ctx=ctx
     )
     await ctx.respond(embed=embed)
-    log_command(ctx,"userinfo")
 
 @tanjun.as_loader
 def load_components(client: Client):
