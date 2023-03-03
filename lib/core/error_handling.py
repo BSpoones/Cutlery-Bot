@@ -19,7 +19,6 @@ HOOKS = tanjun.AnyHooks()
 async def on_error(ctx: SlashContext, exc: Exception, bot: hikari.GatewayBot = tanjun.injected(type=hikari.GatewayBotAware)):
     exception_type = (type(exc).__name__)
     exception_args = "\n".join(list(map(str,exc.args)))
-    print(exc.__context__)
     if exception_type == "CustomError":
         sys.tracebacklimit = 0
         error: CustomError = exc
@@ -40,6 +39,7 @@ async def on_error(ctx: SlashContext, exc: Exception, bot: hikari.GatewayBot = t
             ctx=ctx
         )
     else:
+        exception_line = exc.__traceback__.tb_lineno
         sys.tracebacklimit = 999
         embed = auto_embed(
             type="error",
@@ -48,7 +48,7 @@ async def on_error(ctx: SlashContext, exc: Exception, bot: hikari.GatewayBot = t
             description=f"{exception_args}",
             ctx=ctx
         )
-        logging.error(f"{exception_type} {str(exception_args)}")
+        logging.error(f"{exception_type} {str(exception_args)} - Line {exception_line:,}")
     try:
         await ctx.create_initial_response(embed=embed, flags=hikari.MessageFlag.EPHEMERAL, components=[ERROR_ROW])
     except:
