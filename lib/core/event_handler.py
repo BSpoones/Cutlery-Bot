@@ -85,7 +85,7 @@ class EventHandler():
             thumbnail = event.guild.icon_url,
             colour = hikari.Colour(GREEN)
         )
-        add_guild_to_db(event.guild)
+        await add_guild_to_db(event.guild)
         await self.bot.rest.create_message(OUTPUT_CHANNEL,embed=embed)
         
     async def on_guild_unavailable_event(self, event: hikari.GuildUnavailableEvent):
@@ -153,6 +153,9 @@ class EventHandler():
     # Channel events
     async def on_guild_channel_create_event(self, event: hikari.GuildChannelCreateEvent):
         await add_channel_to_db(event.channel)
+        guild_threads = list(await self.bot.rest.fetch_active_threads(event.guild_id))
+        for thread in guild_threads:
+            await add_channel_to_db(thread)
         await logging_funcs.guild_channel_create(self.bot,event)
     
     async def on_guild_channel_edit_event(self, event: hikari.GuildChannelUpdateEvent):
@@ -233,4 +236,4 @@ class EventHandler():
     # Voice events
     async def on_voice_state_update_event(self, event: hikari.VoiceStateUpdateEvent):
         await logging_funcs.on_voice_state_update(self.bot,event)
-        
+  
