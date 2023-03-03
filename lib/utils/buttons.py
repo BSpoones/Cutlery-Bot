@@ -11,6 +11,27 @@ EMPTY_ROW = (
     .set_is_disabled(True)
     .add_to_container()
 )
+CONFIRMATION_ROW = (
+    hikari.impl.MessageActionRowBuilder()
+    .add_button(ButtonStyle.PRIMARY,"CONFIRM")
+    .set_emoji("✅")
+    .set_label("Ban users")
+    .add_to_container()
+    
+    .add_button(hikari.ButtonStyle.DANGER, "CANCEL")
+    .set_emoji("❌")
+    .set_label("Cancel")
+    .add_to_container()
+)
+
+CONFIRMED_ROW = (
+    hikari.impl.MessageActionRowBuilder()
+    .add_button(ButtonStyle.PRIMARY, "CONFIRMED")
+    .set_emoji("✅")
+    .set_label("Users banned!")
+    .set_is_disabled(True)
+    .add_to_container()
+)
 ERROR_ROW = (
     hikari.impl.MessageActionRowBuilder()
     .add_button(ButtonStyle.PRIMARY, "NOTIFY")
