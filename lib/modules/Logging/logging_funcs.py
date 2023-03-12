@@ -1155,7 +1155,7 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
         # No need to check for a single removed embed as you can only
         # remove all embeds at a time
         if new_embeds == []: # All embeds removed
-            name = f"{len(old_embeds) if len(old_embeds) > 1 else ''}Embed{'s' if len(old_embeds) > 1 else ''} removed"
+            name = f"{len(old_embeds) if len(old_embeds) > 1 else ''} Embed{'s' if len(old_embeds) > 1 else ''} removed"
             value = ""
             for embed in old_embeds:
                 value += "\n\n" + format_embed_to_field_value(embed)
@@ -1163,7 +1163,7 @@ async def message_edit(bot: hikari.GatewayBot, event: hikari.GuildMessageUpdateE
         
         else:
             changed_embeds = [(old,new) for old,new in zip(old_embeds,new_embeds) if old != new ]
-            name = f"{len(old_embeds) if len(old_embeds) > 1 else ''}Embed{'s' if len(old_embeds) > 1 else ''} edited"
+            name = f"{len(old_embeds) if len(old_embeds) > 1 else ''} Embed{'s' if len(old_embeds) > 1 else ''} edited"
             value = ""
             for i,embeds in enumerate(changed_embeds,start=1):
                 old = embeds[0]
