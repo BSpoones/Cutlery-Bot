@@ -83,23 +83,22 @@ PAGENATE_ROW = (
     .add_button(ButtonStyle.PRIMARY, "LAST")
     .set_emoji("⏭")
     .add_to_container()
-    
-    
 )
 
-TIMELINE_ROW = (
+TIMELINE_ROW = ( # AKA The forward back row
     hikari.impl.MessageActionRowBuilder()  
     .add_button(ButtonStyle.PRIMARY, "BACK")
     .set_emoji("◀")
-    .add_to_container()
-
-    .add_button(ButtonStyle.PRIMARY, "NEXT")
-    .set_emoji("▶")
     .add_to_container()
     
     .add_button(ButtonStyle.DANGER, DELETE_CUSTOM_ID)
     .set_emoji("❌")
     .add_to_container()
+    
+    .add_button(ButtonStyle.PRIMARY, "NEXT")
+    .set_emoji("▶")
+    .add_to_container()
+
 
 )
 
