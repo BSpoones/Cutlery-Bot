@@ -1,139 +1,100 @@
 
 import asyncio, random, re, hikari, tanjun, datetime, validators, logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
-from lib.core.error_handling import CustomError
 from apscheduler.triggers.date import DateTrigger
 from hikari import ButtonStyle
-from PIL import Image
-from PIL import Image, ImageDraw, ImageFont,ImageColor
 from humanfriendly import format_timespan
+from PIL import Image, ImageDraw, ImageFont,ImageColor
 from tanjun import Client
+from more_itertools import consecutive_groups
 from data.bot.data import OWNER_IDS
-from lib.core.bot import bot, Bot
+from lib.core.bot import bot
+from lib.core.error_handling import CustomError
 from lib.utils.command_utils import auto_embed
 from lib.utils.utils import next_occourance_of_time
 from . import COG_LINK, COG_TYPE, DAYS_OF_WEEK
 from ...db import db
 
-
 HHMM_FORMAT = "%H%M"
 DEFAULT_ALERT_TIMES = "20,0"
+
 # All IDs and variables are standardised in snake_case
 
 class Timetable():
     def __init__(self):
-        self.lesson_scheduler = AsyncIOScheduler
+        self.lesson_scheduler = AsyncIOScheduler()
+        
+        logging.info("Loading timetable")
         self.load_timetable()
         self.bot: hikari.GatewayBot = bot
     
+    async def reload_timetable(self):
+        """
+        AsyncIOScheduler requires an async func to be scheduled.
+        This took me far too long to figure out so this isn't changing
+        """
+        logging.info("Reloading timetable")
+        self.load_timetable()
+    
     def load_timetable(self):
         """
-        Iterates through all entries on the Lessons table in the database, adding
-        them as jobs to the lesson scheduler.
-        
-        It calculates the neccesary countdown warning times before each lesson, adding
-        multiple jobs to the scheduler depending on the alert time amount
-        
-        It then starts the scheduler
-        """
+        Iterates through all lessons for all groups for the day,
+        loading lesson countdowns for each lesson based on their group's
+        set alert time
+        """        
+        # Restarts lesson scheduler
         try: # Prevents multiple schedulers running at the same time
             if (self.lesson_scheduler.state) == 1:
+                self.lesson_scheduler.remove_all_jobs()
                 self.lesson_scheduler.shutdown(wait=False)
             self.lesson_scheduler = AsyncIOScheduler()
         except:
             self.lesson_scheduler = AsyncIOScheduler()
-        """
-        Introducing a new method to send lessons! (yes this is the sixth rewrite in the last 2 years, i don't like it either)
         
-        Instead of loading an entire year's worth of lessons at once, it makes more sense to load each day's lessons
-        """
-        # Getting code to reload lesson schedule at 1am everyday (why 1am? why not)
+        # Trigger to re-run the func at 00:01 every day (loading in next day's lessons)
         func_trigger = CronTrigger(
-            hour = 1,
-            minute = 0,
+            hour = 0,
+            minute = 1,
             second = 0
         )
         self.lesson_scheduler.add_job(
-            self.load_timetable,
+            self.reload_timetable,
             func_trigger
         )
-        lesson_group_ids = db.column("SELECT lesson_group_id FROM lesson_groups")
-        lessons = self.get_day_timetable(lesson_group_ids, datetime.datetime.today()+datetime.timedelta(days=1))
         
-        # lessons = db.records("SELECT * FROM lessons")
+        # Calculating daily lessons
+        lesson_group_ids = db.column("SELECT lesson_group_id FROM lesson_groups")
+        lessons = self.get_day_timetable(lesson_group_ids, datetime.datetime.today())
+        
         for lesson in lessons:
+            # A Trigger is created for each alert time for every lesson on a day
+            
             lesson_group_id = lesson[1]
-            day_of_week = lesson[4]
-            week_numbers = lesson[5]
             start_time = lesson[6]
-            end_time = lesson[7]
             
+            # Group info
             group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?", lesson_group_id)
-            start_date: datetime.datetime = group_info[10]
             alert_times: str = group_info[14]
-            
             lesson_alert_times = [int(x) for x in alert_times.split(",")]
             
-            # All lessons will be in the x-y format for week numbers.
-            # Weekly lessons will just have week 1-51 on them
-            week_start_datetimes = self.get_week_start_datetimes(week_numbers, start_date)
             current_date = datetime.datetime.today().date()
-            for start_datetime in week_start_datetimes:
-                # All of these are week based (e.g weeks 1-6,8,10-15)
-                # Weekly lessons (old method) will be week 1-51 unless specified otherwise
-                # No lesson will be an exception, even singular lessons will have a week date                
-                if isinstance(start_datetime, list):
-                    # Create trigger
-                    start_week = start_datetime[0]
-                    end_week = start_datetime[1]
-                    
-                    for alert_time in lesson_alert_times:
-                        start_date = start_week + datetime.timedelta(days = day_of_week)
-                        start_time_object = (datetime.datetime.strptime(start_time,HHMM_FORMAT)- datetime.timedelta(minutes=alert_time)).time()
-                        start_datetime = datetime.datetime.combine(start_date,start_time_object)
-                        # To prevent jobs starting in the past, keeping adding 7 days until there are no jobs that start in the past
-                        while start_datetime.date() < current_date:
-                            # While The start date is before the current date, it means the lesson starts in the past
-                            start_datetime += datetime.timedelta(days=7)
-                        end_date = end_week + datetime.timedelta(days = day_of_week)
-                        end_time_object = (datetime.datetime.strptime(end_time,HHMM_FORMAT) - datetime.timedelta(minutes=alert_time)).time()
-                        end_datetime = datetime.datetime.combine(end_date,end_time_object)
-                        # print(start_datetime)
-                        trigger = IntervalTrigger(
-                            days = 7,
-                            start_date = start_datetime,
-                            end_date = end_datetime,
-                            jitter=1
-                        )
-                        self.lesson_scheduler.add_job(
-                            self.send_lesson_countdown,
-                            trigger,
-                            args = [lesson, alert_time, lesson_alert_times]
-                        )
-                        # All alert time functions will check if it's currently in a lesson
-                        # If they're currently in a lesson, return
-                        # If they're not currently in a lesson, find out if the previous alert time is in a lesson
-                        # If the previous alert time is in a lesson but yours isn't, then you're the first one and should 
-                        # send the lesson embed as well as your own countdown
-                        # If the previous alert time is not in a lesson, assume the embed has already been sent
-                else: # Single week lesson
-                    for alert_time in lesson_alert_times:
-                        lesson_date = start_week + datetime.timedelta(days = day_of_week)
-                        lesson_time = (datetime.datetime.strptime(start_time,HHMM_FORMAT) - datetime.timedelta(minutes=alert_time)).time()
-                        lesson_datetime = datetime.datetime.combine(lesson_date,lesson_time)
-                        if not lesson_datetime.date() < current_date:
-                            trigger = DateTrigger(
-                                run_date = lesson_datetime,
-                            )
-                            self.lesson_scheduler.add_job(
-                                self.send_lesson_countdown,
-                                trigger,
-                                args = [lesson, alert_time, lesson_alert_times]
-                            )
+            for alert_time in lesson_alert_times:
+                # Creating a datetime object from the current date and the lesson start time
+                lesson_time = (datetime.datetime.strptime(start_time,HHMM_FORMAT) - datetime.timedelta(minutes=alert_time)).time()
+                lesson_datetime = datetime.datetime.combine(current_date,lesson_time)
+                trigger = DateTrigger( # Using DateTrigger to ensure it only runs once
+                    run_date = lesson_datetime,
+                )
+                # Adding to scheduler
+                self.lesson_scheduler.add_job(
+                    self.send_lesson_countdown,
+                    trigger,
+                    args = [lesson, alert_time, lesson_alert_times]
+                )
 
         self.lesson_scheduler.start()
+        logging.info(f"{len(lessons):,} lessons loaded for {len(lesson_group_ids):,} lesson groups.")
 
     async def send_lesson_embed(self,lesson: tuple) -> hikari.Embed:
         """
@@ -154,9 +115,7 @@ class Timetable():
         channel_id = int(group_info[9])
         image_link = group_info[13]
         school: str = group_info[15]
-        
-        # -- Formatting embed info --
-        
+                
         # Lesson times and duration
         start_datetime = datetime.datetime.strptime(start_time,HHMM_FORMAT)
         end_datetime = datetime.datetime.strptime(end_time,HHMM_FORMAT)
@@ -262,11 +221,11 @@ class Timetable():
         group_id = lesson[1]
         if self.is_datetime_in_holiday(group_id, now):
             # No lessons during a group's holiday
-            logging.info(f"Lesson during a holiday for {group_id} in lesson {lesson}")
+            logging.debug(f"Lesson during a holiday for {group_id} in lesson {lesson}")
             return
         
         alert_time_index = lesson_alert_times.index(alert_time) # Finds out what alert time this countdown is refering to
-        logging.info(f"Attempting lesson countdown for {group_id} in lesson {lesson}")
+        logging.debug(f"Attempting lesson countdown for {group_id} in lesson {lesson}")
         
         # Attempting to send a lesson embed
         # The lesson embed will only be sent once at the earliest possible time without clasing with another lesson
@@ -274,7 +233,7 @@ class Timetable():
         # Checking if the current countdown is in a lesson
         if self.is_datetime_in_lesson(group_id, now) is None: # None meaning datetime is not in a lesson in the group
             if alert_time_index == 0: # If the first item isn't in a lesson then it is automatically the earliest
-                logging.info(f"Earliest item in list for {group_id} in lesson {lesson}")
+                logging.debug(f"Earliest item in list for {group_id} in lesson {lesson}")
                 await self.send_lesson_embed(lesson)
                 await asyncio.sleep(2) # This ensures that the lesson embed always comes before the lesson countdown
             else: # If it's not the first in the list, check the previous alert time
@@ -282,17 +241,17 @@ class Timetable():
                 time_of_last_alert = now - datetime.timedelta(minutes = (last_alert_time - alert_time))
                 if self.is_datetime_in_lesson(group_id, time_of_last_alert) is None:
                     # This means that the last countdown wasn't in a lesson, meaning an embed should have already sent
-                    logging.info(f"Not sending embed. Last countdown not in lesson for {group_id} in lesson {lesson}")
+                    logging.debug(f"Not sending embed. Last countdown not in lesson for {group_id} in lesson {lesson}")
                     pass
                 else:
                     # This means that the last countdown was in a lesson, but this one isn't. Meaning this is the first
                     # out of lesson countdown and therefore should send an embed
-                    logging.info(f"Sending embed - Last item was in lesson for {group_id} in lesson {lesson}")
+                    logging.debug(f"Sending embed - Last item was in lesson for {group_id} in lesson {lesson}")
                     await self.send_lesson_embed(lesson)
                     await asyncio.sleep(2)
         else:
             # If current time is in a lesson
-            logging.info(f"Current time in lesson - for {group_id} in lesson {lesson}")
+            logging.debug(f"Current time in lesson - for {group_id} in lesson {lesson}")
             if alert_time == 0:
                 # If the time is in a lesson, but the lesson is starting, the embed MUST be shown
                 if len(lesson_alert_times) > 1: # Ensuring that 0 wasn't the only alert time
@@ -300,16 +259,16 @@ class Timetable():
                     time_of_last_alert = now - datetime.timedelta(minutes = (last_alert_time - alert_time))
                     if self.is_datetime_in_lesson(group_id, time_of_last_alert) is None:
                         # If the last alert time wasn't in a lesson then an embed has already been sent
-                        logging.info(f"Alert time is 0 and last alert time not in lesson for {group_id} in lesson {lesson}")
+                        logging.debug(f"Alert time is 0 and last alert time not in lesson for {group_id} in lesson {lesson}")
                         pass
                     else:
                         # The last alert time was in a lesson, therefore an embed must be sent
-                        logging.info(f"All alert times were in lesson -  for {group_id} in lesson {lesson}")
+                        logging.debug(f"All alert times were in lesson -  for {group_id} in lesson {lesson}")
                         await self.send_lesson_embed(lesson)
                         await asyncio.sleep(2)
                 else:
                     # There is only one alert, meaning it MUST be sent
-                    logging.info(f"Only 1 alert -  for {group_id} in lesson {lesson}")
+                    logging.debug(f"Only 1 alert -  for {group_id} in lesson {lesson}")
                     await self.send_lesson_embed(lesson)
                     await asyncio.sleep(2) 
             # If current time is in lesson and it's not the final alert time, do nothing
@@ -338,7 +297,7 @@ class Timetable():
                 await asyncio.sleep(delete_after)
                 await message.delete()
                 # TODO: Figure out how to delete the message even on a bot restart (pool of messages to be deleted?)
-    
+
     def get_week_start_datetimes(self,week_num_str: str, group_start_date: datetime.datetime) -> list[datetime.datetime | list[datetime.datetime]]:
         """
         Takes in a week num string (1-5;7) = week nums 1,2,3,4,5,7 and a group
@@ -539,6 +498,23 @@ class Timetable():
         id = db.lastrowid()
         return id
     
+    async def add_teacher(self, lesson_group_id: str, teacher_name: str, online: bool):
+        db.execute(
+            "INSERT INTO teachers (lesson_group_id, name, colour, online) VALUES (?,?,?,?)",
+            lesson_group_id,
+            teacher_name,
+            self.random_hex_colour(),
+            int(online) # Not online
+        )
+    
+    async def add_subject(self, lesson_group_id: str, subject_name: str):
+        db.execute(
+                "INSERT INTO subjects (lesson_group_id,name,colour) VALUES (?,?,?)",
+                lesson_group_id,
+                subject_name,
+                self.random_hex_colour()
+        )
+
     async def parse_timetable_csv(
         self,
         csv_input: bytes, 
@@ -583,20 +559,9 @@ class Timetable():
         teachers = list(teachers)
         subjects = list(subjects)
         for teacher in teachers:
-            db.execute(
-                "INSERT INTO teachers (lesson_group_id, name, colour, online) VALUES (?,?,?,?)",
-                lesson_group_id,
-                teacher,
-                self.random_hex_colour(),
-                int(False) # Not online
-                )
+            await self.add_teacher(lesson_group_id, teacher, False) # All uol lessons are marked as not online
         for subject in subjects:
-            db.execute(
-                "INSERT INTO subjects (lesson_group_id,name,colour) VALUES (?,?,?)",
-                lesson_group_id,
-                subject,
-                self.random_hex_colour()
-            )
+            await self.add_subject(lesson_group_id, subject)
         db.commit()
         for item in timetable:
             day_of_week = int(item[1]) - 1 # On CSV monday is 1 :thinkwhy:
@@ -621,6 +586,74 @@ class Timetable():
         self.load_timetable()
         await self.update_time_channels(lesson_group_id)
         return lesson_group_id
+
+    def find_ranges(self,lst):
+        """Yield range of consecutive numbers."""
+        for group in consecutive_groups(lst):
+            group = list(group)
+            if len(group) == 1:
+                yield group[0],
+            else:
+                yield group[0], group[-1]
+
+    async def parse_uol_json(self,json_data: dict):
+        """
+        Parses UoL timetable JSON
+        from https://timetable.lincoln.ac.uk/studenttimetable/xx-yy
+        where xx and yy are years
+        """
+        if not json_data["success"]:
+            raise CustomError("Unusable JSON","JSON unusable")
+        json_data = json_data["returned"]
+        student_data = json_data["student"]
+        lesson_entries = json_data["timetableEntries"]
+        all_teachers = set()
+        for lesson in lesson_entries:
+            # Retrieving info from entry
+            
+            # Teacher
+            teacher = (lesson["allLecturerNames"].split(","))[0] if lesson["allLecturerNames"] else "No teacher"# Only retrieving the first teacher
+            all_teachers.add(teacher)
+            
+            day_of_week = int(lesson["weekDay"]) - 1
+            
+            subject = (lesson["allModuleTitles"].split(","))[0] if lesson["allModuleTitles"] else "No subject"# Only retrieving the first subject
+            
+            # Converting the weekmap to x-y;z format (same as CSV)
+            week_map = lesson["weeksMap"]
+            week_map_list = list(filter(lambda a: a != None, [i if val == "1" else None for i, val in enumerate(week_map)]))
+            week_map_nums = list(self.find_ranges(week_map_list))
+            week_map_str = ""
+            for item in week_map_nums:
+                if len(item) == 2:
+                    week_map_str += f"{item[0]}-{item[1]};"
+                else:
+                    week_map_str += f"{item[0]};"
+            week_map_str = week_map_str[:-1] if week_map_str[-1] == ";" else week_map_str
+            
+            # Formatting lesson type
+            lesson_type = (((lesson["allEventTypes"].split(","))[0]).split())[0] if lesson["allEventTypes"] else "Unknown lesson type" # Only retrieving the first lesson type
+            possible_lesson_types = {
+                "WORKS" : "WORKSHOP",
+                "ONDROP-IN" : "ONLINE DROP-IN",
+                "ONLECTURE" : "ONLINE LECTURE"
+            }
+            if lesson_type in possible_lesson_types.keys():
+                lesson_type = possible_lesson_types[lesson_type]
+            lesson_type = lesson_type.title()
+            
+            room = (lesson["allRoomIds"].split(","))[0] if lesson["allRoomIds"] else "No room" # Only retrieving the first lesson type
+            
+            # Creating datetime objects for times since a duration calculation is required
+            start_time = datetime.datetime.strptime(lesson["startTime"],"%H:%M")
+            end_time = start_time + datetime.timedelta(minutes=lesson["duration"])
+            
+            # Converting back to HHMM strings
+            start_time = start_time.strftime(HHMM_FORMAT)
+            end_time = end_time.strftime(HHMM_FORMAT)
+            
+            print(f"{lesson_type:<20} - {day_of_week} - {start_time} - {end_time} - {week_map_str:<20} - {teacher:<30} - {room:<10} - {subject:<10}")
+        
     
     def get_day_timetable(self, group_ids: list[str] | str, current_datetime: datetime.datetime):
         """
@@ -905,7 +938,7 @@ class Timetable():
         teachers = set([])
 
         img = Image.new('RGB', size=(7500, 6750), color=(255,255,255))
-        font = ImageFont.truetype("C:\Windows\Fonts\Arial.ttf", 90)
+        font = ImageFont.truetype(r'./assets/fonts/arial.ttf', 90)
         draw = ImageDraw.Draw(img)
         DAYS_OF_WEEK = ["MON","TUE","WED","THU","FRI","SAT","SUN"]
 
@@ -985,7 +1018,6 @@ class Timetable():
         x2 = ((DayOfWeek+1)*1000)+500
         Hour = datetime.datetime.today().hour
         Min = datetime.datetime.today().minute
-        print(x1,x2)
         y_pos = 500+(Hour-8)*500 + (Min/60 * 500)
 
         if 8 <= Hour < 18:
