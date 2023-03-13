@@ -141,7 +141,7 @@ def build_page(ctx: Context, page, amount, serveronly, bot:hikari.GatewayBot) ->
         if time_sent_date != new_date:
             message += f"\n**{time_sent_date}**"
             new_date = time_sent_date
-        message += f"\n `{command_id:>{longest_command_id_length}} > /{command_name:<{longest_command_name_length}}` <@{user_id}>"
+        message += f"\n `{command_id:>{longest_command_id_length},} > /{command_name:<{longest_command_name_length}}` <@{user_id}>"
         
     embed = auto_embed(
         type="info",
