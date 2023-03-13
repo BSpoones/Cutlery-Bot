@@ -9,9 +9,19 @@ logging.getLogger('apscheduler.executors.default').propagate = False # Prevents 
 logging.getLogger('apscheduler.scheduler').propagate = False  # Prevents log spam
 # My own personal functions to aid development
 def get_colour_from_ctx(ctx: tanjun.abc.Context):
-    return (ctx.member.get_top_role().color)
+    return get_colour_from_member(ctx.member)
+
 def get_colour_from_member(member: hikari.Member):
-    return (member.get_top_role().color)
+    """
+    Finds the highest ranking role that has a colour,
+    if it can't find a role with a colour, it uses the
+    colour of the top role (#000000)
+    """
+    member_roles = member.get_roles()
+    for role in member_roles:
+        if role.colour.raw_hex_code != "000000":
+            return role.colour
+    return (member.get_top_role().colour)
 
 
 class Bot(hikari.GatewayBot):
