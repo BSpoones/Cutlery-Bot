@@ -1,4 +1,4 @@
-import tanjun, hikari, datetime
+import tanjun, hikari, datetime, json, logging
 from tanjun.abc import SlashContext
 from data.bot.data import INTERACTION_TIMEOUT, OWNER_IDS
 
@@ -26,8 +26,8 @@ group_group = timetable_component.with_slash_command(tanjun.slash_command_group(
 @tanjun.with_str_slash_option("group_code","Select a group code. This could be a shortened form of group_name", default=None)
 @tanjun.with_str_slash_option("group_name","Select a group name. This could be your course or any name of your choice")
 @tanjun.with_attachment_slash_option("timetable_csv","CSV file containing a timetable")
-@tanjun.as_slash_command("import","Import a University of Lincoln CSV timetable. (Admin only)")
-async def group_import_command(
+@tanjun.as_slash_command("import_csv","Import a University of Lincoln CSV timetable. (Admin only)")
+async def group_import_csv_command(
     ctx: SlashContext, 
     timetable_csv: hikari.Attachment, 
     group_name: str,
@@ -68,6 +68,20 @@ async def group_import_command(
     )
     await ctx.respond(embed=embed)
     log_command(ctx, "group import",str(lesson_group_id))
+
+@group_group.with_command
+@tanjun.with_attachment_slash_option("timetable_json","JSON file containing a timetable")
+@tanjun.as_slash_command("import_json","Uses the JSON data from https://timetable.lincoln.ac.uk/studenttimetable/")
+async def group_import_json_command(
+    ctx: SlashContext, 
+    timetable_json: hikari.Attachment
+    ):
+    await ctx.defer()
+    if timetable_json.extension != "json":
+        raise CustomError("Only a .json file is accepted")
+    json_str = (await timetable_json.read())
+    json_data = json.loads(json_str)
+    await CB_TIMETABLE.parse_uol_json(json_data)
 
 @group_group.with_command
 @tanjun.with_str_slash_option("group_name","Group name to remove")
@@ -535,10 +549,45 @@ async def currentlesson_command(ctx: SlashContext, group: str = None):
     await ctx.respond(embed=embed)
     log_command(ctx,"current_lesson")
 
+async def build_weeklyschedule_embed(ctx: SlashContext, group_ids, date: datetime.datetime):
+    start_of_week = date - datetime.timedelta(days=date.weekday())
+    
+    image = CB_TIMETABLE.build_weeklyschedule_image(group_ids, date)
+    with BytesIO() as image_binary: # Used to turn Pillow image to binary for discord to upload
+        image.save(image_binary, 'PNG')
+        image_binary.seek(0)
+        file = hikari.Bytes(image_binary,"image.png")
+    
+    title = f"Weekly Schedule"
+    description = f"Showing weekly schedule:\n`w/c {start_of_week.strftime('%Y-%m-%d')}`"
+    
+    group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?",group_ids[0])
+    thumbnail = group_info[13]
+    
+    embed = auto_embed(
+        type = "info",
+        author = COG_TYPE,
+        author_url = COG_LINK,
+        title = title,
+        description = description,
+        image = file,
+        thumbnail = thumbnail if thumbnail else None,
+        ctx = ctx
+    )
+    
+    return embed
+
 @timetable_component.add_slash_command
 @tanjun.with_str_slash_option("group","A group name or group code to search for", default=None)
 @tanjun.as_slash_command("weeklyschedule","Shows an image of your weekly schedule")
-async def weeklyschedule_command(ctx: SlashContext, group: str = None):
+async def weeklyschedule_command(
+    ctx: SlashContext, 
+    group: str = None,
+    bot: hikari.GatewayBot = tanjun.injected(type=hikari.GatewayBotAware)
+    ):
+    await ctx.defer()
+    message = await ctx.fetch_initial_response()
+    
     # Parsing group
     if group is None:
         group_ids = CB_TIMETABLE.get_group_ids_from_user(ctx.author.id)
@@ -548,16 +597,56 @@ async def weeklyschedule_command(ctx: SlashContext, group: str = None):
         group_ids = db.column("SELECT * FROM lesson_groups WHERE group_name = ?",group)
         if group_ids is None:
             raise CustomError("Group not found","Could not find that group in this server, please check your spelling")
+    
     group_ids = list(map(str,group_ids))
     date = datetime.datetime.today()
     
-    image = CB_TIMETABLE.build_weeklyschedule_image(group_ids, date)
-    with BytesIO() as image_binary: # Used to turn Pillow image to binary for discord to upload
-        image.save(image_binary, 'PNG')
-        image_binary.seek(0)
-        file = hikari.Bytes(image_binary,"image.png")
+    embed = await build_weeklyschedule_embed(ctx, group_ids, date)
+    
+    await ctx.edit_initial_response(embed=embed, components=[TIMELINE_ROW])
+    log_command(ctx,"weeklyschedule")
+    
+    start_of_week = date - datetime.timedelta(days=date.weekday())
         
-    await ctx.respond(attachment=file)
+    title = f"Weekly Schedule"
+    description = f"**Creating weekly schedule**"
+    
+    group_info = db.record("SELECT * FROM lesson_groups WHERE lesson_group_id = ?",group_ids[0])
+    thumbnail = group_info[13]
+    
+    loading_screen_embed = auto_embed(
+        type = "info",
+        author = COG_TYPE,
+        author_url = COG_LINK,
+        title = title,
+        description = description,
+        thumbnail = thumbnail if thumbnail else None,
+        ctx = ctx
+    )
+    
+    try:
+        with bot.stream(InteractionCreateEvent, timeout=INTERACTION_TIMEOUT).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
+            async for event in stream:
+                await event.interaction.create_initial_response(
+                    ResponseType.DEFERRED_MESSAGE_UPDATE,
+                )
+                key = event.interaction.custom_id
+                match key:
+
+                    case "BACK":
+                        date = date - datetime.timedelta(days=7)
+                        await ctx.edit_initial_response(embed=loading_screen_embed,components=[], attachment = None)
+                        await ctx.edit_initial_response(embed=await build_weeklyschedule_embed(ctx, group_ids, date),components=[TIMELINE_ROW,])
+                    case "NEXT":
+                        date = date + datetime.timedelta(days=7)
+                        await ctx.edit_initial_response(embed=loading_screen_embed,components=[], attachment = None)
+                        await ctx.edit_initial_response(embed=await build_weeklyschedule_embed(ctx, group_ids, date),components=[TIMELINE_ROW,])
+        
+                    case "AUTHOR_DELETE_BUTTON":
+                        await ctx.delete_initial_response()
+        await ctx.edit_initial_response(components=[EMPTY_ROW])
+    except Exception as e:
+        logging.error(e)
  
 @tanjun.as_loader
 def load_components(client: Client):
