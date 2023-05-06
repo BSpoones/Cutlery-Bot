@@ -105,9 +105,9 @@ async def info_command(ctx: Context):
     # Used to get total lines of code
     files = []
     if os.name == "nt":
-        path = os.getcwd()+"\TheKBot"
+        path = os.getcwd()+"\CutleryBot"
     else:
-        path = os.getcwd()+"/TheKBot"
+        path = os.getcwd()+"/CutleryBot"
 
     for r, d, f in os.walk(path):
         for file in f:
