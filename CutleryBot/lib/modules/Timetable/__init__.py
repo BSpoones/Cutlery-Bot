@@ -14,8 +14,6 @@ __version__ = "2.0"
 from CutleryBot.lib.modules.Timetable.timetable_funcs import Timetable
 
 CB_TIMETABLE = Timetable()
-
-# print(CB_TIMETABLE.get_next_lesson("1"))
 """
 Instance of Timetable in timetable_funcs.py.
 """
