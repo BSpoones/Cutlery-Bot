@@ -17,7 +17,7 @@ def get_colour_from_member(member: hikari.Member):
     return (member.get_top_role().color)
 
 def status_check(status: int):
-    from lib.core.error_handling import CustomError
+    from CutleryBot.lib.core.error_handling import CustomError
     match status:
         case 500:
             raise CustomError("`500` - API offline","The API is currently offline.")
@@ -168,7 +168,7 @@ def log_command(*args):
         logging.critical(f"Failed to log command: {e}")
         
 def permission_check(ctx: Context, permissions: list[hikari.Permissions] or hikari.Permissions):
-    from lib.core.error_handling import CustomError
+    from CutleryBot.lib.core.error_handling import CustomError
     
     # Converting single permission to list
     if not isinstance(permissions,list):
