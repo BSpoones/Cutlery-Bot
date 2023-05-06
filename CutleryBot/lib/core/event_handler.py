@@ -1,8 +1,8 @@
 import hikari, logging, time, datetime, asyncio
 from humanfriendly import format_timespan
 
-from ..db import db
-from data.bot.data import DARK_GREEN, DARK_RED, GREEN, RED, VERSION, OUTPUT_CHANNEL
+from CutleryBot.lib.db import db
+from CutleryBot.data.bot.data import DARK_GREEN, DARK_RED, GREEN, RED, VERSION, OUTPUT_CHANNEL
 from CutleryBot.lib.modules.Logging.filter import filter_message
 from CutleryBot.lib.modules.Logging import COG_LINK, COG_TYPE, logging_funcs
 from CutleryBot.lib.utils.utils import add_channel_to_db, add_guild_to_db, add_member_to_db, add_role_to_db, allocate_startup_db, update_bot_presence
