@@ -89,34 +89,34 @@ async def command_leaderboard_command(
         components = None
     message = await ctx.respond(embed=embed, components=components,ensure_result=True)
     if components is not None:
-        # try:
-        with bot.stream(InteractionCreateEvent, timeout=INTERACTION_TIMEOUT).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
-            async for event in stream:
-                await event.interaction.create_initial_response(
-                    ResponseType.DEFERRED_MESSAGE_UPDATE,
-                )
-                key = event.interaction.custom_id
-                match key:
-                    case "FIRST":
-                        page = 1
-                        await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[PAGENATE_ROW,])
-                    case "BACK":
-                        if page-1 >= 1:
-                            page -= 1
+        try:
+            with bot.stream(InteractionCreateEvent, timeout=INTERACTION_TIMEOUT).filter(('interaction.user.id',ctx.author.id),('interaction.message.id',message.id)) as stream:
+                async for event in stream:
+                    await event.interaction.create_initial_response(
+                        ResponseType.DEFERRED_MESSAGE_UPDATE,
+                    )
+                    key = event.interaction.custom_id
+                    match key:
+                        case "FIRST":
+                            page = 1
                             await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[PAGENATE_ROW,])
-                    case "NEXT":
-                        if page+1 <= last_page:
-                            page += 1
+                        case "BACK":
+                            if page-1 >= 1:
+                                page -= 1
+                                await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[PAGENATE_ROW,])
+                        case "NEXT":
+                            if page+1 <= last_page:
+                                page += 1
+                                await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[PAGENATE_ROW,])
+                        case "LAST":
+                            page = last_page
                             await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[PAGENATE_ROW,])
-                    case "LAST":
-                        page = last_page
-                        await ctx.edit_initial_response(embed=build_leaderboard(ctx,page,amount, sorted_commands_dict, last_page),components=[PAGENATE_ROW,])
-                    case "AUTHOR_DELETE_BUTTON":
-                        await ctx.delete_initial_response()
-        await ctx.edit_initial_response(components=[EMPTY_ROW])
+                        case "AUTHOR_DELETE_BUTTON":
+                            await ctx.delete_initial_response()
+            await ctx.edit_initial_response(components=[EMPTY_ROW])
 
-        # except:
-        #     pass
+        except:
+            pass
 
 # Command logs
 
