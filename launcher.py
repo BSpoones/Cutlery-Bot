@@ -10,6 +10,6 @@ More information: https://bspoones.com/Cutlery-Bot
 launcher.py
 - Use me to start Cutlery Bot!
 """
-from lib.core.bot import bot
+from CutleryBot.lib.core.bot import bot
 
 bot.run()
