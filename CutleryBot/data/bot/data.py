@@ -6,7 +6,7 @@ Developed by BSpoones - Aug 2022
 """
 
 import json
-with open("./data/bot/BotInfo.json") as f:
+with open(".CutleryBot/data/bot/BotInfo.json") as f:
     BOT_INFO = json.load(f)
     VERSION = BOT_INFO["VERSION"]
     SLASH_GUILD_ID = BOT_INFO["SLASH_GUILD_ID"]
