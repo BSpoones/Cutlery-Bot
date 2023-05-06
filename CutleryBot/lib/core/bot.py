@@ -26,7 +26,7 @@ def get_colour_from_member(member: hikari.Member):
 
 class Bot(hikari.GatewayBot):
     def __init__(self) -> None:
-        with open("./secret/token") as f:
+        with open("./CutleryBot/secret/token") as f:
             self.token = f.read()
 
         self.event_handler = EventHandler(self)

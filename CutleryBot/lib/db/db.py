@@ -7,7 +7,7 @@ from mysql.connector.cursor import CursorBase
 from mysql.connector import MySQLConnection
 from CutleryBot.data.bot.data import EVENT_TYPES
 
-with open("./secret/dbCredentials.json") as f:
+with open("./CutleryBot/secret/dbCredentials.json") as f:
     dbCredentials = json.load(f)
     host = dbCredentials["host"]
     user = dbCredentials["user"]
