@@ -11,7 +11,7 @@ class Client(tanjun.Client):
         super().__init__(*args,**kwargs)
     
     def load_modules(self):
-        path = Path("./lib/modules")
+        path = Path("./CutleryBot/lib/modules")
         for ext in path.glob(("**/") + "[!_]*.py"): # Loads all but private python files
             super().load_modules(".".join([*ext.parts[:-1], ext.stem]))
         logging.info(f"Loaded {len(list(path.glob(('**/') + '[!_]*.py'))):,} module files")
