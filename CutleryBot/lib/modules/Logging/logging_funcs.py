@@ -407,11 +407,11 @@ async def guild_channel_edit(bot:hikari.GatewayBot, event: hikari.GuildChannelUp
             # Check for role / user
             if added_permission_id in guild_role_ids:
                 # Guarenteed role
-                name = "Role removed"
-                if str(new_id) == str(event.guild_id):
+                name = "Role added"
+                if str(added_permission_id) == str(event.guild_id):
                     role_ping = "@everyone"
                 else:
-                    role_ping = f"<@&{new_id}>"
+                    role_ping = f"<@&{added_permission_id}>"
                 value = f"{role_ping} was added"
             else:
                 # Guarenteed user
