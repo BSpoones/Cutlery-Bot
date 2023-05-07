@@ -9,7 +9,7 @@
     "ACTIVITY_NAME" : "CB v",
     "SLASH_GUILD_ID": 0,
     "OUTPUT_CHANNEL": 0,
-    "VERSION": "0.9.9",
+    "VERSION": "0.9.10",
     "INTERACTION_TIMEOUT": 60,
     "EVENT_TYPES": [
         "BanCreateEvent",
