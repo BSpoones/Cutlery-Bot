@@ -1,8 +1,42 @@
 # Cutlery Bot
-Cutlery Bot (CB) is the fourth iteration of a multipurpose Discord bot devloped in Python3.10 with [hikari-py](https://github.com/hikari-py/hikari) and [tanjun](https://github.com/FasterSpeeding/Tanjun).
 
-Other documentation and tutorials can be found [here](https://www.bspoones.com/)
+Cutlery Bot is a multi-purpose Discord Bot written in [hikari-py](https://github.com/hikari-py/hikari) and [tanjun](https://github.com/FasterSpeeding/Tanjun).
+
+Information and tutorials about Cutlery Bot can be found [here](https://www.bspoones.com/Cutlery-Bot)
+
 --------
+# Features
+
+#### Moderation
+ - **BanAll**: BanAll is a command that can ban all users that match a given string or a regular expression. This is useful for server raids, where multiple users of the same name join such as `SpamBot#0001`, `SpamBot#0002` etc.
+ - **Archive**: Archive allows you to back-up a channel or a server's messages to a database to track message edits and deletions for your entire server. It's advised to only use this on a private server, where all users consent to their messages being stored.
+ - **AutoPurge**: AutoPurge allows for all messages older than a defined timeframe to be deleted. This can help to de-clutter channels or to keep channels like bot-commands clean.
+ - **Logging**: Cutlery Bot is able to log almost all discord events, from user joins to channel creation to message edits. This is a powerful tool to help moderate your server
+ - **Purge**: This removes x messages from a channel. This can also purge messages that max a regex filter within a given range or purge a custom range of messages depending on the message ID
+
+#### Reminders
+ - **Remind at**: Send a reminder at a specific time. E.g you could set a reminder for 22:00, this would send at the next occurence of 22:00, wether it was today or the day after
+ - **Remind every**: Send a repeating reminder that matches a condition. E.g remind every Sunday at 09:00, or every year at a specific datetime
+ - **Remind in**: Send a reminder in a determined amount of time. E.g 10 minutes into the future
+ - **Remind per**: Send a reminder once per time frame. For example send a reminder once every 4 days
+
+#### Timetables
+ - **Timetables**: Import your school or university timetable into Cutlery Bot, sending pings before your lessons to help you learn your timetable.
+ - **Schedules**: Show a daily schedule, listing all lessons/lectures for the day, as well as any reminders or assignments that are scheduled to occur on that day
+ - **WeeklySchedule**: Similar to schedule, but this command creates an image of your week's schedule, showing all lessons and `[NF]` reminders.
+ - **NextLesson**: Find out when and where your next lesson will occur
+ - **CurrentLesson**: Find out how long there is until your current lesson/lecture finishes
+ - **Holidays**: Set custom holidays, which will affect your lesson announcements and schedules
+
+#### Utility / Fun
+ - **Big**: Enlarge an emoji! This now works for both default and custom discord emojis
+ - **Command Logs**: Show the most recent command uses in your server or bot-wide!
+ - **Command Leaderboard**: Show the most used Cutlery Bot commands!
+ - **Define**: Get the dictionary definition of a word
+ - **UrbanDefine**: Get the Urban Dictionary definition of a word. (Warning: These results may be NSFW!)
+ - **User Info**: Find out information about a user
+ - **Server Info**: Find out information about your server
+
 
 Planned features:
 
