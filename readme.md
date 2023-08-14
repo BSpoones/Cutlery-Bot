@@ -1,5 +1,10 @@
 # Cutlery Bot
 
+### NOTE: This bot is now discontinued, It will continue to be of service for the forseeable future
+
+Predecessor: [Vitaly Petrov](https://github.com/BSpoones/Vitaly-Petrov)  
+Successor: [Zephyr](https://github.com/BSpoones/Zephyr)
+
 Cutlery Bot is a multi-purpose Discord Bot written in [hikari-py](https://github.com/hikari-py/hikari) and [tanjun](https://github.com/FasterSpeeding/Tanjun).
 
 Information and tutorials about Cutlery Bot can be found [here](https://www.bspoones.com/Cutlery-Bot)
